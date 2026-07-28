@@ -1,0 +1,49 @@
+---
+title: 'Astro Learning Guide 05: Islands architecture and framework components'
+description: 'Use React, Vue, or Svelte components surgically with hydration directives that match user intent.'
+pubDate: '2026-07-28'
+updatedDate: '2026-07-28'
+tags:
+  - astro
+  - islands
+  - react
+  - hydration
+  - learning-guide
+draft: false
+series: 'astro-learning-guide'
+canonicalURL: 'https://scriptautomation123.github.io/blog/astro-learning-guide/lesson-05-islands-and-framework-components/'
+---
+
+Astro's islands model gives precise control over client JavaScript.
+
+## Hydration directives
+
+Typical directives:
+
+- `client:load`: hydrate immediately.
+- `client:idle`: hydrate when main thread is idle.
+- `client:visible`: hydrate when component enters viewport.
+- `client:media`: hydrate based on media query.
+
+## Practical guidance
+
+- Prefer no hydration for static content.
+- Use `client:visible` for below-the-fold widgets.
+- Use `client:idle` for non-critical interactions.
+- Reserve `client:load` for primary UX controls.
+
+## Anti-patterns
+
+- Hydrating entire pages by default.
+- Mixing many frameworks without clear benefit.
+- Shipping dynamic behavior where plain HTML is enough.
+
+## Exercise
+
+1. Add one small interactive component (for example, tabbed code snippets).
+2. Hydrate with `client:visible`.
+3. Compare bundle impact before and after.
+
+## What to learn next
+
+Continue to [Astro Learning Guide 06: Styling, assets, and performance](../lesson-06-styling-assets-and-performance/).

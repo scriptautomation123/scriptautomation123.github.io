@@ -1,0 +1,64 @@
+---
+title: 'Astro Learning Guide 01: Mental model and setup'
+description: "Understand Astro's architecture and set up a clean local project workflow."
+pubDate: '2026-07-28'
+updatedDate: '2026-07-28'
+tags:
+  - astro
+  - frontend
+  - architecture
+  - learning-guide
+draft: false
+series: 'astro-learning-guide'
+canonicalURL: 'https://scriptautomation123.github.io/blog/astro-learning-guide/lesson-01-mental-model-and-setup/'
+---
+
+This series teaches Astro in the order senior engineers actually use it: architecture first, mechanics second.
+
+## Why Astro exists
+
+Astro optimizes for static-first delivery and sends minimal JavaScript by default.
+
+- HTML is rendered on the server at build time or request time.
+- JavaScript is opt-in per interactive component.
+- Most pages stay fast because no framework runtime is required for static content.
+
+## Core mental model
+
+Think of Astro as a page orchestrator with islands of interactivity.
+
+- `.astro` files compose markup and data.
+- Framework components (React, Vue, Svelte) can be embedded only where needed.
+- Hydration directives decide when components become interactive.
+
+## Local setup
+
+Use a predictable developer workflow:
+
+```bash
+npm ci
+npm run dev
+```
+
+Suggested habits:
+
+- Keep `main` deployable at all times.
+- Open PRs for every content or code change.
+- Run `npm run validate` before pushing.
+
+## Folder map for this project
+
+- `src/pages/`: routes.
+- `src/content/`: typed content collections.
+- `src/layouts/`: reusable page structures.
+- `src/components/`: shared UI pieces.
+
+## First exercise
+
+1. Duplicate an existing post.
+2. Change title, description, and tags.
+3. Add one section and verify it appears at `/blog`.
+
+## What to learn next
+
+Continue to [Astro Learning Guide 02: Routing, pages, and layouts](../lesson-02-routing-pages-and-layouts/).

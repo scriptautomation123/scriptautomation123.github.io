@@ -1,0 +1,47 @@
+---
+title: 'Astro Learning Guide 06: Styling, assets, and performance'
+description: 'Build a clear visual system, optimize assets, and protect performance budgets over time.'
+pubDate: '2026-07-28'
+updatedDate: '2026-07-28'
+tags:
+  - astro
+  - performance
+  - css
+  - assets
+  - learning-guide
+draft: false
+series: 'astro-learning-guide'
+canonicalURL: 'https://scriptautomation123.github.io/blog/astro-learning-guide/lesson-06-styling-assets-and-performance/'
+---
+
+Astro gives strong defaults, but sustained performance requires explicit budgets.
+
+## CSS strategy
+
+- Keep global styles minimal and intentional.
+- Push route- or component-specific styles closer to components.
+- Use design tokens (variables) for color, spacing, typography.
+
+## Asset pipeline
+
+- Use optimized images with constrained dimensions.
+- Prefer modern formats where possible.
+- Keep hero assets meaningful, not decorative weight.
+
+## Performance checklist
+
+- Measure bundle size after every interactive feature.
+- Avoid layout shift from unbounded media.
+- Keep third-party scripts to a strict allowlist.
+
+## Exercise
+
+1. Define three performance budgets:
+   - page weight,
+   - JS payload,
+   - LCP target.
+2. Add these limits to your PR checklist.
+
+## What to learn next
+
+Continue to [Astro Learning Guide 07: Deployment, CI, and long-term maintenance](../lesson-07-deployment-ci-and-maintenance/).

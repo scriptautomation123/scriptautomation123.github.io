@@ -1,0 +1,25 @@
+---
+import { type CollectionEntry, getCollection, render } from 'astro:content';
+import BlogPost from '../../layouts/BlogPost.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  const retiredEntryIds = new Set(['astro-learning-guide/complete-guide']);
+  return posts
+    .filter((post) => !retiredEntryIds.has(post.id))
+    .map((post) => ({
+      params: {
+        slug: post.id.endsWith('/index') ? post.id.slice(0, -'/index'.length) : post.id,
+      },
+      props: post,
+    }));
+}
+type Props = CollectionEntry<'blog'>;
+
+const post = Astro.props;
+const { Content, headings } = await render(post);
+---
+
+<BlogPost {...post.data} entryFilePath={post.filePath} entryId={post.id} headings={headings}>
+  <Content />
+</BlogPost>

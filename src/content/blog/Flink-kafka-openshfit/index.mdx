@@ -1,0 +1,53 @@
+---
+title: 'Flink 2.2 on OpenShift: End-to-End Multi-Section Guide'
+description: 'A production-style, single-post guide covering deployment, security, resilience, scaling, CI/CD, and hardening for Flink 2.2 on OpenShift.'
+pubDate: '2026-07-28'
+updatedDate: '2026-07-28'
+tags:
+  - flink
+  - openshift
+  - kafka
+  - kubernetes
+  - data-engineering
+draft: false
+series: 'flink-openshift'
+canonicalURL: 'https://scriptautomation123.github.io/blog/Flink-kafka-openshfit/'
+---
+
+import S01 from './sections/1_application_mode.md';
+import S02 from './sections/2_kafka_sasl_jdbc.md';
+import S03 from './sections/3_secrets_and_env_variables.md';
+import S04 from './sections/4_java_datastream_app.md';
+import S05 from './sections/5_dlq_lru_cache.md';
+import S06 from './sections/6_metrics_checkpointing_health.md';
+import S07 from './sections/7_savepoints_and_upgrades.md';
+import S08 from './sections/8_auto_scaling_reactive_mode_keda.md';
+import S09 from './sections/9_network_policies_and_connection_pooling.md';
+import S10 from './sections/10_resilience_circuit_breaker_and_fallback.md';
+import S11 from './sections/11_kafka_producer_tuning_and_g1gc_optimizations.md';
+import S12 from './sections/12_tekton_cicd_and_chaos_testing.md';
+import S13 from './sections/13_automated_verification_and_kafka_transaction_auditing.md';
+import S14 from './sections/14_reconciliation_worker.md';
+import S15 from './sections/15_data_transformations_filtering_aggregations_batch_and_materialized_views.md';
+import S16 from './sections/16_hardening_late_data_and_oracle_indexing.md';
+
+This post is the single long-form version of the Flink on OpenShift material. All source section files remain intact and are rendered below in sequence.
+
+## Sections
+
+<S01 />
+<S02 />
+<S03 />
+<S04 />
+<S05 />
+<S06 />
+<S07 />
+<S08 />
+<S09 />
+<S10 />
+<S11 />
+<S12 />
+<S13 />
+<S14 />
+<S15 />
+<S16 />

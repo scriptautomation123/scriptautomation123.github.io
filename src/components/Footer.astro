@@ -1,0 +1,65 @@
+---
+const today = new Date();
+---
+
+<footer>
+  <div class="inner">
+    <p class="copyright">&copy; {today.getFullYear()} scriptautomation123. Built with Astro.</p>
+    <nav aria-label="Footer" class="links">
+      <a href="/">Home</a>
+      <a href="/blog">Blog</a>
+      <a href="/blog/astro-learning-guide">Learning Guide</a>
+      <a href="https://github.com/scriptautomation123/scriptautomation123.github.io" target="_blank"
+        >GitHub</a
+      >
+    </nav>
+  </div>
+</footer>
+<style>
+  footer {
+    padding: 2.2rem 1rem 3rem 1rem;
+    margin-top: 3rem;
+    border-top: 1px solid rgb(var(--border));
+    background: rgb(var(--surface));
+    color: rgb(var(--text-soft));
+  }
+
+  .inner {
+    max-width: 980px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .copyright {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .links {
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+  }
+
+  .links a {
+    text-decoration: none;
+    color: rgb(var(--text-soft));
+    font-weight: 600;
+    font-size: 0.94rem;
+  }
+
+  .links a:hover {
+    color: rgb(var(--text));
+  }
+
+  @media (max-width: 720px) {
+    .inner {
+      justify-content: center;
+      text-align: center;
+    }
+  }
+</style>

@@ -1,0 +1,52 @@
+---
+// Import the global.css file here so that it is included on
+// all pages through the use of the <BaseHead /> component.
+import '../styles/global.css';
+import type { ImageMetadata } from 'astro';
+import FallbackImage from '../assets/blog-placeholder-1.jpg';
+import { SITE_TITLE } from '../consts';
+import { toAssetURL, toPageURL } from '../utils/url';
+
+interface Props {
+  title: string;
+  description: string;
+  image?: ImageMetadata;
+}
+
+const { title, description, image = FallbackImage } = Astro.props;
+
+const urlContext = { site: Astro.site, url: Astro.url };
+const canonicalURL = toPageURL(Astro.url.pathname, urlContext);
+const rssURL = toAssetURL('rss.xml', urlContext);
+const ogURL = toPageURL(Astro.url.pathname, urlContext);
+const ogImageURL = toAssetURL(image.src, urlContext);
+---
+
+<!-- Global Metadata -->
+<meta charset="utf-8" />
+<meta content="width=device-width,initial-scale=1" name="viewport" />
+<meta content="light dark" name="color-scheme" />
+<link href="/favicon.svg" rel="icon" type="image/svg+xml" />
+<link href="/favicon.ico" rel="icon" />
+<link href="/sitemap-index.xml" rel="sitemap" />
+<link href={rssURL} rel="alternate" title={SITE_TITLE} type="application/rss+xml" />
+<meta content={Astro.generator} name="generator" />
+
+<script is:inline src="/scripts/theme-init.js"></script>
+
+<!-- Canonical URL -->
+<link href={canonicalURL} rel="canonical" />
+
+<!-- Primary Meta Tags -->
+<title>{title}</title>
+<meta content={description} name="description" />
+
+<!-- Open Graph / Facebook -->
+<meta content="website" property="og:type" />
+<meta content={ogURL} property="og:url" />
+<meta content={title} property="og:title" />
+<meta content={description} property="og:description" />
+<meta content={ogImageURL} property="og:image" />
+
+<!-- Twitter -->
+<meta content="summary_large_image" name="twitter:card" />
