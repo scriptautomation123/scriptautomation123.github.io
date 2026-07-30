@@ -1259,21 +1259,28 @@ HAVING
 
 Financial compliance requires strict adherence to regulations governing algorithmic decisioning:
 
-```
-+---------------------------------------------------------------------------------+
-|                       REGULATORY COMPLIANCE ENFORCEMENT                         |
-+-------------------+-------------------------------------------------------------+
-| Regulation        | Database Architectural Mechanism                            |
-+-------------------+-------------------------------------------------------------+
-| UDAAP             | Fair-lending bias filtering & transparent explainability    |
-| (Unfair Acts)     | stored alongside LLM prompt history.                        |
-+-------------------+-------------------------------------------------------------+
-| Reg B (ECOA)      | Exclusion of protected class attributes from vector         |
-|                   | distance matrices and LLM prompt context.                   |
-+-------------------+-------------------------------------------------------------+
-| Reg Z             | Transparent, deterministic fee disclosure validation prior  |
-| (Truth in Lending)| to presenting nudge text to end consumers.                 |
-+-------------------+-------------------------------------------------------------+
+| Regime | Applies to | Oracle Database 26ai Native Architectural Mechanism |
+|---|---|---|
+| UDAAP (Dodd-Frank §1031/§1036) | Consumer-facing LLM nudges | Immutable `AI_CALL_LOG` auditing prompt inputs, temperature, and output text. |
+| Reg B / ECOA | Credit decisions & pre-approvals | PGQ Property Graph schema excludes protected demographic nodes (`age`, `gender`, `race`). |
+| FCRA | Adverse action on credit applications | Deterministic PL/SQL rule rationale extraction before LLM formatting (no black-box logic). |
+| CFPB AI Circulars (2022/2023) | Complex algorithms & LLM prompts | SHAP feature weighting to pass exact negative factors to notifications. |
+| Reg Z (TILA) | Credit-card / loan offer disclosures | Deterministic placeholder token substitution for verbatim APR/fee disclosures. |
+| Reg DD (TISA) | Deposit (Term Deposit) disclosures | Mandatory APY token substitution from core product ledger rate tables. |
+| Reg E | Electronic fund transfer errors/disputes | Message tagging (`SERVICING` vs `MARKETING`) to bypass quiet hours & marketing opt-outs. |
+| GLBA | Non-Public Personal Information (NPI) | In-Database Local ONNX Model Execution (`DBMS_DATA_MINING.IMPORT_ONNX_MODEL`) for zero data egress. |
+| CFPB Section 1033 | Open banking personal financial data | `CONSENT_MANAGEMENT` table join (`opt_in_1033_marketing = 'Y'`) prior to vector matching. |
+| State ADMT Laws (CA CCPA, CO AI Act) | Automated profiling and decisions | Pre-decision opt-out flag evaluation in PL/SQL gateway & instant DB Flashback DSAR reporting. |
+| GDPR / CCPA / State Privacy | EU / CA / applicable state customers | Oracle Dynamic Data Masking (DDM) & Virtual Private Database (VPD) scoping. |
+| EU AI Act (Reg 2024/1689) | AI systems evaluating credit eligibility | Human-in-the-Loop (`NUDGE_APPROVAL_QUEUE`) staging table for high-risk credit offers. |
+| SR 11-7 / OCC Guidance | Model Risk Management | Oracle Model Catalog (`ALL_MINING_MODELS`) tracking model inventory, drift, and challenger models. |
+| NIST AI RMF 1.0 | Generative LLMs and RAG pipelines | In-database JSON Schema validation and REGEX prompt injection sanitization routines. |
+| 2023 Third-Party Guidance | Cloud-hosted LLM providers & APIs | Support for local in-DB LLM execution (OCI Dedicated AI Clusters) eliminating vendor lock-in. |
+| TCPA / CAN-SPAM / e-Sign | Outbound channels (SMS, email, push) | Real-time checks against `TCPA_CONSENT` & `QUIET_HOURS_POLICY` tables before dispatch. |
+| BSA / AML | Transaction monitoring & fraud | Anti-Tipping View (`AML_SAFE_CUSTOMER_VIEW`) suppressing accounts under active investigation. |
+| PCI-DSS | Cardholder data (PAN, CVV, Expiry) | Oracle Native Data Redaction (`DBMS_REDACT`) auto-masking 16-digit PANs in prompt context. |
+| NYDFS Part 500 / FFIEC | Cybersecurity & ML-KEM encryption | Oracle `UNIFIED_AUDIT_TRAIL` + NIST-approved ML-KEM quantum-resistant encryption. |
+| SOX | Financial reporting & attribution | Oracle Cryptographic Blockchain Tables (`BLOCKCHAIN_CAMPAIGN_ATTRIBUTION`) for tamper-proof logs. |
 ```
 
 ### Deterministic Token Substitution & Audit Logging Package
@@ -1417,6 +1424,6 @@ ALTER SYSTEM SET PARALLEL_MAX_SERVERS = 64 SCOPE=BOTH;
 - [ ] **Failover Testing:** Test Data Guard Active Standby synchronization during high-throughput vector querying.
 - [ ] **Bias Scoring Thresholds:** Ensure PL/SQL validation stops execution if `bias_score > 0.05`.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTYxMjcwNzk1MywtMTAzOTg4OTcwMCwtND
-UyOTE1ODU3LC0xNjU1NTY5Njc5XX0=
+eyJoaXN0b3J5IjpbNTA1NjkwNDY1LDE2MTI3MDc5NTMsLTEwMz
+k4ODk3MDAsLTQ1MjkxNTg1NywtMTY1NTU2OTY3OV19
 -->
