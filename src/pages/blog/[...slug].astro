@@ -4,9 +4,7 @@ import BlogPost from '../../layouts/BlogPost.astro';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
-  const retiredEntryIds = new Set(['astro-learning-guide/complete-guide']);
   return posts
-    .filter((post) => !retiredEntryIds.has(post.id))
     .map((post) => ({
       params: {
         slug: post.id.endsWith('/index') ? post.id.slice(0, -'/index'.length) : post.id,

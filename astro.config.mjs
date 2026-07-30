@@ -22,8 +22,6 @@ export default defineConfig({
       '/blog/astro-learning-guide/lesson-06-styling-assets-and-performance/',
     '/blog/astro-learning-guide/07-deployment-ci-and-maintenance/':
       '/blog/astro-learning-guide/lesson-07-deployment-ci-and-maintenance/',
-    '/blog/astro-learning-guide/complete-guide/':
-      '/blog/astro-learning-guide/lesson-00-complete-guide/',
   },
   integrations: [mdx(), sitemap()],
   fonts: [
