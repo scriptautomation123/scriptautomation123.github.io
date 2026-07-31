@@ -3271,7 +3271,42 @@ Principal Architect Design Review Summary
 1.  **Total Ingestion Air-Gapping (NIST AI RMF):** Adversarial prompts are intercepted and dropped before vector mapping can happen.
 2.  **Unified Core Engine Execution:** Eliminates network delays by calculating vector coordinates and parsing SQL property graphs in a single database session.
 3.  **Verified Audit Records (SOX / Dodd-Frank):** Every call is permanently logged to an append-only database blockchain ledger table for smooth auditing.
+
+To completely modernize a tier-1 banking application like Bank of America’s **Erica chatbot** using the architecture you built, you need a split design pattern: **Spring AI manages the conversation flow and LLM integration, while Oracle 26ai runs the compliance checks, vector generation, and relationship graph traversals.**
+
+This approach ensures the system scales efficiently under heavy loads. It prevents the application tier from wasting CPU cycles on high-dimensional vector math and keeps sensitive data safe from memory leaks within the Java application server.
+
+----------
+
+Part 1: Implementing the Embedding Model in Spring AI
+
+In a secure banking environment, sending raw customer text to public, cloud-hosted embedding APIs is a major compliance risk. The standard enterprise architecture relies on an **In-Database Local ONNX Model** or an air-gapped **OCI Dedicated AI Cluster**.
+
+Spring AI abstracts this setup using the `EmbeddingModel` interface. Below is the production-ready configuration for initializing a secure embedding client within your application. [[1](https://medium.com/@yashovardhan6960/exploring-spring-ai-a-practical-look-at-ai-integration-in-the-spring-ecosystem-7bfb25479bdf), [2](https://brightinventions.pl/blog/gentle-intro-to-spring-ai-embedding-model-abstraction/)]
+
+1. Add the Enterprise Spring AI Dependencies (`pom.xml`) [[1](https://www.javacodegeeks.com/building-ai-assistants-with-spring-ai.html), [2](https://medium.com/@salmankhan_27014/building-a-basic-java-application-with-spring-ai-sprint-ai-in-action-d11b1a8e26cb), [3](https://coralogix.com/ai-blog/enhancing-rag-performance-using-hypothetical-document-embeddings-hyde/)]
+
+xml
+
+```
+<dependencies>
+    <!-- Core Spring AI Starter -->
+    <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+        <version>1.0.0-M1</version>
+    </dependency>
+    <!-- Spring Boot Starter Web for routing chat streams -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+</dependencies>
+
+```
+
+
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTYzNzAxOTQ2NywxMjY5OTY2NTI4LDEwMj
-E4NDE4MDQsLTEyNjM3NjcxNDldfQ==
+eyJoaXN0b3J5IjpbLTgwMDk3NDk2LDEyNjk5NjY1MjgsMTAyMT
+g0MTgwNCwtMTI2Mzc2NzE0OV19
 -->
