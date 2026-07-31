@@ -4065,8 +4065,192 @@ CREATE PROPERTY GRAPH awr_performance_graph
 
 ```
 
+Part 1: OpenShift Cluster Topology Schema & SQL:2023 Property Graph
+
+This schema represents the cluster DAG. It tracks the relationships between components and stores high-dimensional vectors of container status logs natively within the same database engine.
+
+sql
+
+```
+-- Core OpenShift Cluster Topology Schema
+CREATE TABLE openshift_namespaces (
+    namespace_id        NUMBER PRIMARY KEY,
+    namespace_name      VARCHAR2(128) UNIQUE,
+    cluster_context     VARCHAR2(100)
+);
+
+CREATE TABLE openshift_resources (
+    resource_uid        VARCHAR2(64) PRIMARY KEY, -- Kubernetes UID
+    namespace_id        NUMBER REFERENCES openshift_namespaces(namespace_id),
+    resource_name       VARCHAR2(255) NOT NULL,
+    resource_kind       VARCHAR2(50),             -- 'Deployment', 'ReplicaSet', 'Pod', 'Service'
+    desired_replicas    NUMBER,
+    current_replicas    NUMBER
+);
+
+CREATE TABLE openshift_resource_dag_edges (
+    edge_id             NUMBER PRIMARY KEY,
+    parent_uid          VARCHAR2(64) REFERENCES openshift_resources(resource_uid),
+    child_uid           VARCHAR2(64) REFERENCES openshift_resources(resource_uid),
+    dependency_type     VARCHAR2(50)             -- 'OWNED_BY', 'ROUTES_TO', 'MOUNTS'
+);
+
+CREATE TABLE openshift_event_logs (
+    event_id            NUMBER PRIMARY KEY,
+    resource_uid        VARCHAR2(64) REFERENCES openshift_resources(resource_uid),
+    reason_code         VARCHAR2(100),            -- 'OOMKilled', 'FailedScheduling', 'BackOff'
+    message_text        VARCHAR2(4000),
+    message_vector      VECTOR(384, FLOAT32),     -- 384-dimension vector from local mini LLM
+    recorded_at         TIMESTAMP DEFAULT SYSTIMESTAMP
+);
+
+-- Local memory-optimized HNSW Vector Index on unstructured cluster logs
+CREATE VECTOR INDEX idx_hnsw_oc_logs ON openshift_event_logs(message_vector)
+ORGANIZATION INMEMORY NEIGHBOR GRAPH
+DISTANCE COSINE;
+
+-- Declarative SQL:2023 Property Graph Definition of the Cluster DAG
+CREATE PROPERTY GRAPH openshift_cluster_dag
+    VERTEX TABLES (
+        openshift_resources KEY (resource_uid) LABEL Resource PROPERTIES (resource_name, resource_kind)
+    )
+    EDGE TABLES (
+        openshift_resource_dag_edges KEY (edge_id)
+            SOURCE KEY (parent_uid) REFERENCES openshift_resources(resource_uid)
+            DESTINATION KEY (child_uid) REFERENCES openshift_resources(resource_uid) LABEL DEPENDS_ON
+    );
+
+```
+
+1. Ingestion Engine Implementation (`RestClient` + Virtual Threads)
+
+This background service schedules a recurring pool task to sweep the target OpenShift API namespace for events, extract payload states, and batch-upload records to the data tier.
+
+java
+
+```
+package com.bofa.erica.service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.Types;
+
+@Service
+public class OpenShiftEventIngestionEngine {
+
+    private static final Logger log = LoggerFactory.getLogger(OpenShiftEventIngestionEngine.class);
+
+    private final RestClient restClient;
+    
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Value("${openshift.api.url}")
+    private String openShiftApiUrl;
+
+    @Value("${openshift.api.token}")
+    private String apiToken;
+
+    public OpenShiftEventIngestionEngine() {
+        // Build the modern Spring Boot 4 RestClient baseline
+        this.restClient = RestClient.builder().build();
+    }
+
+    /**
+     * Automated execution block running natively over Java Virtual Threads.
+     * Continuously ingests live streaming cluster topology events every 10 seconds.
+     */
+    @Scheduled(fixedRate = 10000)
+    public void ingestLiveClusterEvents() {
+        log.info("Polling OpenShift cluster REST API for namespace event logs...");
+        
+        String endpoint = openShiftApiUrl + "/api/v1/namespaces/production/events";
+
+        try {
+            // Pull the latest cluster event frames securely from the OpenShift API
+            JsonNode rootNode = restClient.get()
+                    .uri(endpoint)
+                    .header("Authorization", "Bearer " + apiToken)
+                    .header("Accept", "application/json")
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            if (rootNode != null && rootNode.has("items")) {
+                JsonNode items = rootNode.get("items");
+                log.info("Harvested {} cluster event logs. Streaming payloads to Oracle 26ai...", items.size());
+
+                // Iterate over items inside the virtual thread stack frame
+                for (JsonNode item : items) {
+                    processAndStoreEvent(item);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Network hardware timeout connecting to OpenShift REST payload engine: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Binds unstructured event strings directly to the in-database vector processing tier.
+     */
+    private void processAndStoreEvent(JsonNode item) {
+        String uid = item.get("metadata").get("uid").asText();
+        String reason = item.get("reason").asText();
+        String message = item.get("message").asText();
+        String resourceUid = item.get("involvedObject").get("uid").asText();
+
+        // Push raw values directly into the database engine via a compiled PL/SQL block
+        jdbcTemplate.execute((Connection conn) -> {
+            String sql = """
+                DECLARE
+                    v_vec VECTOR(384, FLOAT32);
+                    v_log_id NUMBER;
+                BEGIN
+                    -- Calculate vector embeddings natively using the local ONNX model
+                    v_vec := DBMS_VECTOR.GENERATE_TEXT_EMBEDDING(
+                                text   => ?,
+                                params => json('{"model": "MINI_LLM_EMBEDDER"}')
+                             );
+                             
+                    SELECT nvl(MAX(event_id), 0) + 1 INTO v_log_id FROM openshift_event_logs;
+
+                    -- Insert the record with its generated embedding into the table
+                    MERGE INTO openshift_event_logs target
+                    USING (SELECT ? AS r_uid FROM dual) src
+                    ON (target.resource_uid = src.r_uid AND target.reason_code = ?)
+                    WHEN NOT MATCHED THEN
+                        INSERT (event_id, resource_uid, reason_code, message_text, message_vector)
+                        VALUES (v_log_id, ?, ?, ?, v_vec);
+                END;
+                """;
+
+            try (CallableStatement stmt = conn.prepareCall(sql)) {
+                stmt.setString(1, message);     -- Bound to text embedding generator
+                stmt.setString(2, resourceUid);  -- Target relationship vertex
+                stmt.setString(3, reason);       -- Condition tag
+                stmt.setString(4, resourceUid);
+                stmt.setString(5, reason);
+                stmt.setString(6, message);
+                stmt.execute();
+            }
+            return null;
+        });
+    }
+}
+
+```
+
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTIxMjcwMzEyODUsMTI2OTk2NjUyOCwxMD
-IxODQxODA0LC0xMjYzNzY3MTQ5XX0=
+eyJoaXN0b3J5IjpbMzg2MDY4ODEzLDEyNjk5NjY1MjgsMTAyMT
+g0MTgwNCwtMTI2Mzc2NzE0OV19
 -->
