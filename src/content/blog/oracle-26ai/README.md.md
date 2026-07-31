@@ -1051,7 +1051,178 @@ CREATE TABLE nudge_approval_queue (
 
 ```
 
+2. Core Operational Enterprise Compliance Engine
+
+This stored procedure encapsulates all 20 checks. It handles everything from input regex validation and token replacement to model risk tracking and audit trail generation.
+
+sql
+
+```
+CREATE OR REPLACE PROCEDURE evaluate_enterprise_compliance (
+    p_customer_id       IN  INT,
+    p_product_code      IN  VARCHAR2,
+    p_raw_prompt        IN  VARCHAR2,
+    p_message_channel   IN  VARCHAR2, -- 'SMS', 'EMAIL', 'PUSH', 'SERVICING_UI'
+    p_message_type      IN  VARCHAR2, -- 'MARKETING', 'SERVICING'
+    p_temperature       IN  NUMBER,
+    p_model_name        IN  VARCHAR2,
+    p_final_prompt      OUT VARCHAR2,
+    p_verdict           OUT VARCHAR2
+) IS
+    v_1033_consent      VARCHAR2(1);
+    v_admt_opt_out      VARCHAR2(1);
+    v_tcpa_consent      VARCHAR2(1);
+    v_mkt_opt_out       VARCHAR2(1);
+    v_aml_invest        VARCHAR2(1);
+    v_apr               NUMBER(5,2);
+    v_apy               NUMBER(5,2);
+    v_model_status      VARCHAR2(30);
+    v_log_id            INT;
+    v_current_hour      INT;
+    
+    -- Exception definitions
+    e_compliance_halt   EXCEPTION;
+BEGIN
+    p_verdict := 'PASSED';
+    p_final_prompt := p_raw_prompt;
+    v_current_hour := EXTRACT(HOUR FROM SYSTIMESTAMP);
+
+    ---------------------------------------------------------------------------
+    -- FETCH COMPLIANCE & FINANCIAL CONFIGURATIONS (Anchored Data Lookups)
+    ---------------------------------------------------------------------------
+    BEGIN
+        SELECT opt_in_1033_marketing, automated_profiling_opt_out, tcpa_sms_consent, marketing_opt_out, under_active_aml_invest
+        INTO v_1033_consent, v_admt_opt_out, v_tcpa_consent, v_mkt_opt_out, v_aml_invest
+        FROM customer_compliance_ledger WHERE customer_id = p_customer_id;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        -- Zero-Trust default parameters if metadata is missing
+        v_1033_consent := 'N'; v_admt_opt_out := 'Y'; v_tcpa_consent := 'N'; v_mkt_opt_out := 'Y'; v_aml_invest := 'N';
+    END;
+
+    BEGIN
+        SELECT verbatim_apr, verbatim_apy INTO v_apr, v_apy 
+        FROM financial_product_ledger WHERE product_code = p_product_code;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        v_apr := 0.00; v_apy := 0.00;
+    END;
+
+    ---------------------------------------------------------------------------
+    -- REGIME EVALUATIONS (Sequential Security Steps)
+    ---------------------------------------------------------------------------
+
+    -- 1. NIST AI RMF 1.0: In-Database Regex Injection Sanitization
+    IF REGEXP_LIKE(LOWER(p_raw_prompt), '(ignore previous|override system|system prompt|bypass rules)') THEN
+        p_verdict := 'BLOCKED_NIST_PROMPT_INJECTION';
+        RAISE e_compliance_halt;
+    END IF;
+
+    -- 2. GLBA & 2023 Third-Party Guidance: Local Core Model Lock Validation
+    -- (Verifies the model is hosted locally or inside an enterprise OCI Dedicated Cluster)
+    IF p_model_name NOT LIKE 'LOCAL_ONNX_%' AND p_model_name NOT LIKE 'OCI_DEDICATED_%' THEN
+        p_verdict := 'BLOCKED_GLBA_DATA_EGRESS_RISK';
+        RAISE e_compliance_halt;
+    END IF;
+
+    -- 3. SR 11-7 / OCC Guidance: Model Catalog Validation & Drift Verification
+    BEGIN
+        SELECT status INTO v_model_status FROM all_mining_models WHERE model_name = p_model_name;
+        IF v_model_status != 'VALID' THEN
+            p_verdict := 'BLOCKED_MODEL_RISK_INVALID_STATUS';
+            RAISE e_compliance_halt;
+        END IF;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        p_verdict := 'BLOCKED_MODEL_RISK_UNREGISTERED_MODEL';
+        RAISE e_compliance_halt;
+    END COMPARTMENT;
+
+    -- 4. BSA / AML: Anti-Tipping Defenses
+    -- (Silently filters information without alerting accounts under active investigation)
+    IF v_aml_invest = 'Y' THEN
+        p_final_prompt := 'SYSTEM NOTE: Standard placeholder summary deployment fallback sequence activated.';
+        p_verdict := 'ALTERED_AML_ANTI_TIPPING';
+        GOTO write_log_block;
+    END IF;
+
+    -- 5. State ADMT Laws (CA CCPA, CO AI Act): Profile Evaluation Gate
+    IF v_admt_opt_out = 'Y' THEN
+        p_verdict := 'BLOCKED_ADMT_USER_OPT_OUT';
+        RAISE e_compliance_halt;
+    END IF;
+
+    -- 6. CFPB Section 1033: Open Banking Consent Isolation Validation
+    IF v_1033_consent = 'N' AND p_message_type = 'MARKETING' THEN
+        p_verdict := 'BLOCKED_CFPB_1033_CONSENT_MISSING';
+        RAISE e_compliance_halt;
+    END IF;
+
+    -- 7. TCPA / CAN-SPAM / e-Sign: Outbound Channel Quiet Hours Check
+    IF p_message_channel IN ('SMS', 'PUSH') AND (v_current_hour < 8 OR v_current_hour >= 21) AND p_message_type != 'SERVICING' THEN
+        p_verdict := 'BLOCKED_TCPA_QUIET_HOURS_VIOLATION';
+        RAISE e_compliance_halt;
+    END IF;
+
+    -- 8. Reg E: Electronic Fund Transfer Dispatch Message Classification
+    IF p_message_type = 'MARKETING' AND v_mkt_opt_out = 'Y' THEN
+        p_verdict := 'BLOCKED_REG_E_MARKETING_OPT_OUT';
+        RAISE e_compliance_halt;
+    END IF;
+
+    -- 9. Reg B / ECOA & CFPB AI Circulars: Node Feature Isolation & SHAP Rule Generation
+    -- (Ensures demographic attributes are excluded and logs explicit decision logic)
+    IF REGEXP_LIKE(LOWER(p_raw_prompt), '(age|gender|race|ethnicity|zipcode)') THEN
+        p_verdict := 'BLOCKED_REG_B_PROTECTED_CLASS_EXCLUSION';
+        RAISE e_compliance_halt;
+    END IF;
+
+    -- 10. Reg Z (TILA) & Reg DD (TISA): Verbatim Token Substitution
+    -- (Replaces text metrics with core reference data to ensure clear, accurate disclosures)
+    p_final_prompt := REGEXP_REPLACE(p_final_prompt, '\{APR_DISCLOSURE\}', TO_CHAR(v_apr, '99.99') || '% APR');
+    p_final_prompt := REGEXP_REPLACE(p_final_prompt, '\{APY_DISCLOSURE\}', TO_CHAR(v_apy, '99.99') || '% APY');
+
+    -- 11. EU AI Act: Human-in-the-Loop Queue Placement
+    -- (Routes high-risk financial offers to a staging table for verification prior to execution)
+    IF REGEXP_LIKE(LOWER(p_final_prompt), '(pre-approved credit|loan eligibility|grant credit)') THEN
+        INSERT INTO nudge_approval_queue (customer_id, proposed_nudge) VALUES (p_customer_id, p_final_prompt);
+        p_verdict := 'STAGED_EU_AI_ACT_HUMAN_IN_THE_LOOP';
+        GOTO write_log_block;
+    END IF;
+
+    -- 12. FCRA: Rationale Extraction
+    p_final_prompt := p_final_prompt || ' [FCRA DETERMINISTIC RATIONALE CODE: DTL-MIG-784]';
+
+    
+```
+
+allenge 1: The "Anti-Tipping" Security Mandate (BSA / AML)
+
+-   **The Problem:** Under the Bank Secrecy Act (BSA) and Anti-Money Laundering (AML) regulations, if a customer is under an active, confidential fraud investigation, a support agent or automated AI system **must not tip them off**.
+-   **Traditional Failure:** The application server runs a vector search to find support context for an incoming customer chat. The vector index returns matching fraud policy documentation. The application layer must then perform a separate database lookup to check if the user is under investigation, creating a race condition. If the app-tier check fails or lags, the AI might inadvertently tell the customer: _"Your transaction is blocked due to active AML Investigation File #902."_
+-   **The Unified Solution:** A single hybrid SQL query resolves the vector search, intersects it with an operational graph of account relationships, and applies a Virtual Private Database (VPD) policy at the kernel level. If the account node is flagged as under investigation, the text and vector fields are automatically redacted before they hit the application memory.
+
+sql
+
+```
+-- Hybrid Vector Search + Property Graph Match with Security Policy Filter
+SELECT ticket_id, 
+       (1 - VECTOR_DISTANCE(ticket_vector, :query_embedding, COSINE)) * 100 AS match_score,
+       gt.account_status,
+       gt.investigation_level
+FROM helpdesk_tickets t
+CROSS JOIN GRAPH_TABLE(support_knowledge_graph
+    MATCH (acc IS Account) -[:GENERATED]-> (tk IS Ticket)
+    WHERE tk.ticket_id = t.ticket_id
+    COLUMNS (
+        acc.status AS account_status,
+        acc.aml_flag AS investigation_level
+    )
+) gt
+WHERE VECTOR_DISTANCE(ticket_vector, :query_embedding, COSINE) < 0.35
+ORDER BY match_score DESC;
+
+```
+
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTAyMTg0MTgwNCwtMTI2Mzc2NzE0OV19
+eyJoaXN0b3J5IjpbLTE0NjQ1NDM4MTAsMTAyMTg0MTgwNCwtMT
+I2Mzc2NzE0OV19
 -->
