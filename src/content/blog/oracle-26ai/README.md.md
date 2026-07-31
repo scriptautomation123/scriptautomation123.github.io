@@ -159,7 +159,106 @@ CREATE INDEX hybrid_ticket_idx ON helpdesk_tickets(summary)
 INDEXTYPE IS CTXSYS.CONTEXT
 PARAMETERS ('VECTOR COLUMN ticket_vector');
 ```
+2. The Production PL/SQL Package (Text Input + RRF + Graph)
 
+This updated package replaces the raw `VECTOR` input with a `VARCHAR2` natural language prompt. It dynamically invokes the embedding model, passes it to the hybrid text engine using RRF scoring, and cross-references the winners with your Property Graph. [[1](https://blogs.oracle.com/coretec/hybrid-vector-index-the-combination-of-full-text-and-semantic-vector-search), [2](https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/access-third-party-models-vector-generation-leveraging-third-party-rest-apis.html), [3](https://github.com/oracle/skills/blob/main/db/features/dbms-vector.md)]
+
+sql
+
+```
+CREATE OR REPLACE PACKAGE support_analytics_pkg AS
+    -- Define structured record for production pipeline consumption
+    TYPE context_rec IS RECORD (
+        ticket_id        INT,
+        rrf_score        NUMBER,
+        summary          VARCHAR2(4000),
+        component_name   VARCHAR2(100),
+        engineer_name    VARCHAR2(100)
+    );
+    TYPE context_tbl IS TABLE OF context_rec;
+
+    -- Production Entry Point: Accepts natural language string directly
+    FUNCTION get_hybrid_graph_context(
+        p_search_text  IN VARCHAR2,
+        p_limit        IN INT DEFAULT 5
+    ) RETURN context_tbl PIPELINED;
+END support_analytics_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY support_analytics_pkg AS
+
+    FUNCTION get_hybrid_graph_context(
+        p_search_text  IN VARCHAR2,
+        p_limit        IN INT DEFAULT 5
+    ) RETURN context_tbl PIPELINED IS
+        v_query_vector VECTOR(384, FLOAT32);
+        v_json_param   VARCHAR2(1000);
+    BEGIN
+        -- 1. Native Embedding Generation
+        -- Uses your loaded database ONNX model or registered REST provider credentials
+        v_json_param := '{"model": "doc_model"}';
+        v_query_vector := DBMS_VECTOR.GENERATE_TEXT_EMBEDDING(
+                             text  => p_search_text,
+                             params => v_json_param
+                          );
+
+        -- 2. Hybrid Search with Reciprocal Rank Fusion (RRF) & Graph Expansion
+        FOR r IN (
+            WITH hybrid_candidates AS (
+                SELECT ticket_id, 
+                       score AS rrf_score,
+                       summary
+                FROM DBMS_HYBRID_VECTOR.SEARCH(
+                    JSON('{
+                        "hybrid_index" : "hybrid_ticket_idx",
+                        "search": {
+                            "text": "' || p_search_text || '",
+                            "vector": ' || VECTOR_SERIALIZE(v_query_vector) || '
+                        },
+                        "scoring": {
+                            "algorithm": "RRF"
+                        }
+                    }')
+                )
+                FETCH FIRST p_limit ROWS ONLY
+            )
+            SELECT 
+                hc.ticket_id,
+                hc.rrf_score,
+                hc.summary,
+                gt.comp_name,
+                gt.eng_name
+            FROM hybrid_candidates hc
+            CROSS JOIN GRAPH_TABLE(support_knowledge_graph
+                MATCH (t IS Ticket) -[is_aff IS AFFECTS]-> (c IS Component),
+                      (t) -[is_asg IS ASSIGNED_TO]-> (e IS Engineer)
+                WHERE t.ticket_id = hc.ticket_id
+                COLUMNS (
+                    c.comp_name AS comp_name,
+                    e.name AS eng_name
+                )
+            ) gt
+            ORDER BY hc.rrf_score DESC
+        ) LOOP
+            PIPE ROW(r);
+        END LOOP;
+        RETURN;
+        
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20002, 'Hybrid Graph Execution failed: ' || SQLERRM);
+    END get_hybrid_graph_context;
+
+END support_analytics_pkg;
+/
+
+```
+
+Architectural Breakdown
+
+-   **`DBMS_VECTOR.GENERATE_TEXT_EMBEDDING`**: Computes text strings into vector coordinates natively inside memory, preventing payload exposure to application middleware boundaries. [[1](https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/pl-sql-packages-generate-embeddings.html), [2](https://blogs.oracle.com/cloud-infrastructure/oci-database-ai-vector-search-guide)]
+-   **`DBMS_HYBRID_VECTOR.SEARCH` with `"RRF"`**: Intersects exact structural matches (like specific logs or text IDs) with loose conceptual matches, resolving keyword vs. vector trade-offs cleanly via standardized mathematical rank merging. [[1](https://blogs.oracle.com/coretec/hybrid-vector-index-the-combination-of-full-text-and-semantic-vector-search), [2](https://github.com/oracle/skills/blob/main/db/features/dbms-vector.md)]
+-   **`GRAPH_TABLE` Path Matching**: Resolves highly nested data dependencies (e.g., finding the manager of the engineer handling the affected infrastructure component) without forcing resource-heavy multi-table relational `JOIN` conditions.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTM0NzMyMzM5OV19
+eyJoaXN0b3J5IjpbLTEyNjM3NjcxNDldfQ==
 -->
