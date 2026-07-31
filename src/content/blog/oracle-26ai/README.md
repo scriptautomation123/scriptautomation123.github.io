@@ -1684,7 +1684,7 @@ When you run this test suite (`mvn clean test`), your Spring Boot runtime valida
 3.  **Test Case 3 (VPD Spatial Check):** Verifies geographical data isolation rules. An EU analyst asks about an issue that matches a California record. The database kernel modifies the query behind the scenes to filter by jurisdiction, returning zero rows to the client and successfully protecting cross-border privacy boundaries.
 4.  **Test Case 4 (Model Lock Check):** Ensures third-party models are blocked. If code changes accidentally introduce an external cloud model endpoint, the compliance package rejects the transaction, preventing data from leaking outside your network perimeter.
 
-##ase 1: Targeted Credit Card Cross-Sell Campaign (Reg B / CFPB 1033 / TCPA)
+### case 1: Targeted Credit Card Cross-Sell Campaign (Reg B / CFPB 1033 / TCPA)
 
 -   **Objective:** Identify high-affinity customers for a premium credit card using semantic vector search on historical interactions, filter them by relationship history using property graphs, verify consent constraints, and replace financial metrics with live product data.
 -   **The Solution:** A unified query that matches vectors within an HNSW sub-space, filters out users without proper regulatory consent, checks outbound time boundaries, and injects real-time interest rates into the promotional text. [[1](https://medium.com/technology-hits/vector-databases-for-rag-2641ddb18911)]
@@ -1726,11 +1726,9 @@ CROSS JOIN GRAPH_TABLE(marketing_compliance_graph
 ) gt;
 
 ```
-The Production Enterprise Pattern: PL/SQL Package API Gateway
+### The Production Enterprise Pattern: PL/SQL Package API Gateway
 
 The standard architecture requires a unified PL/SQL package that exposes a single entry point. This entry point evaluates compliance conditions, processes the vector graph search, generates an immutable audit record, and returns the sanitized result set to the Spring AI connection wrapper.
-
-sql
 
 ```
 CREATE OR REPLACE PACKAGE marketing_campaign_api AS
@@ -1900,11 +1898,9 @@ This implementation uses low-level **Oracle JDBC extensions (`OracleTypes.CURSOR
 
 ----------
 
-1. Spring JDBC Service Layer Component
+### 1. Spring JDBC Service Layer Component
 
 This class encapsulates the execution of the database stored procedure. It captures connection contexts, maps cursor arrays to strongly typed records, and catches any database compliance exceptions (`ORA-20110`).
-
-java
 
 ```
 package com.example.aidatagateway.service;
@@ -1992,16 +1988,9 @@ public class SecureMarketingDataService {
         }
     }
 }
-
 ```
 
-Use code with caution.
-
-----------
-
-2. Supporting Data Transfer Object (`Record`)
-
-java
+### 2. Supporting Data Transfer Object (`Record`)
 
 ```
 package com.example.aidatagateway.dto;
@@ -2017,15 +2006,11 @@ public record MarketingOfferResponse(
 
 ```
 
-Use code with caution.
-
-----------
-
-3. Integrated Spring AI GraphRAG Pipeline Orchestrator
+### 3. Integrated Spring AI GraphRAG Pipeline Orchestrator
 
 This service links the database output to **Spring AI's `ChatModel`**. It retrieves the secure data context, populates a system prompt template, and drives final text generation.
 
-java
+
 
 ```
 package com.example.aidatagateway.service;
@@ -2099,20 +2084,16 @@ public class MarketingGraphRagOrchestrator {
         
 ```
 
-Use code with caution.
-
-----------
-
 Architectural Design Checklist for Production Verification
 
 -   **Complete Type Marshalling:** Maps the `SYS_REFCURSOR` directly to java memory objects row by row without resorting to generic untyped map projections.
 -   **Kernel-to-Socket Protection:** If a compliance breach occurs (e.g., an unapproved outreach time or missing customer consent), **the cursor allocation is canceled before any data leaves database memory**. Your Spring Boot service never handles raw, non-compliant rows.
 -   **Zero-Leak Memory Profiles:** Redacted columns (like masked customer IDs or card tokens) cross the database boundary in their masked format, keeping your Java heap safe from storing plaintext PII.
-1. Production Dependencies (`pom.xml`)
+
+### 1. Production Dependencies (`pom.xml`)
 
 Ensure your build configuration includes standard Spring AOP and micrometer telemetry packages:
 
-xml
 
 ```
 <dependencies>
@@ -4941,5 +4922,5 @@ class DataSeedLoadIntegrationTest {
 
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTM4NjE3NzQ2OCwtMTk5MzQ5NTk3N119
+eyJoaXN0b3J5IjpbMjA2NDc3MjA3NSwtMTk5MzQ5NTk3N119
 -->
