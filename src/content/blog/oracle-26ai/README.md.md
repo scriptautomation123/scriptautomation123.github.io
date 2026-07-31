@@ -544,7 +544,39 @@ END;
 
 ```
 
+Core Compliance Protections Built So Far
+
+1.  **NIST AI RMF:** The **DML Trigger** blocks malicious injection patterns before they enter the system.
+2.  **GDPR / CCPA:** **VPD** filters row access at the kernel layer based on geography.
+3.  **PCI-DSS / GLBA:** **`DBMS_REDACT`** masks financial and personal tokens on output without degrading search or vector engine accuracy.
+To satisfy **SOX**, **UDAAP**, and **NYDFS Part 500** compliance, tracking user inquiries requires more than a standard database table; it requires a cryptographically verifiable history.
+
+In Oracle AI Database 26ai, you can use **Native Blockchain Tables**. These tables are append-only storage systems where each row contains a cryptographic hash linked directly to the previous row's metadata (`SHA2-512`). Because this cryptographic sequence is maintained internally by the database engine, even an administrator or an intruder with full root or `SYSDBA` access cannot alter, update, or delete historical transaction records.
+
+1. The Tamper-Proof Audit Table Structure
+
+This DDL script creates a blockchain table specifically designed to log every natural language search, its classification, and its compliance safety status.
+
+sql
+
+```
+CREATE BLOCKCHAIN TABLE compliance_ai_audit_ledger (
+    log_id             INT,
+    session_user       VARCHAR2(128),
+    client_jurisdiction VARCHAR2(10),
+    search_prompt      VARCHAR2(4000),
+    sanitization_state VARCHAR2(30),
+    execution_timestamp TIMESTAMP
+)
+-- Enforcement Constraints: rows can never be deleted, only appended
+NO DELETE UNTIL 365 DAYS AFTER INSERT
+NO DROP UNTIL 365 DAYS AFTER INSERT;
+
+```
+
 Use code with caution.
+
+
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNzc2OTk1Mjc4LC0xMjYzNzY3MTQ5XX0=
+eyJoaXN0b3J5IjpbLTgxMTM4NjExNywtMTI2Mzc2NzE0OV19
 -->
