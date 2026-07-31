@@ -763,9 +763,165 @@ public record SupportContextResponse(
 
 ```
 
+
+. Spring Service Tier: Native PL/SQL Package Invocation
+
+This production service class retrieves a dedicated connection block from the pool, extracts the current user's authenticated email or region profile, injects that identity directly into your secure database session wrapper (`jurisdiction_security_pkg`), and then streams the vector-graph responses.
+
+java
+
+```
+package com.example.aidatagateway.service;
+
+import com.example.aidatagateway.dto.SupportContextResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class SupportAnalyticsService {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Transactional(readOnly = true)
+    public List<SupportContextResponse> getSecureHybridContext(String searchText, int maxResults) {
+        List<SupportContextResponse> results = new ArrayList<>();
+
+        // Use the native JDBC connection to set session context before executing the query
+        jdbcTemplate.execute((Connection conn) -> {
+            
+            // 1. SECURITY STEP: Bind the authenticated thread user context to the Oracle Session
+            // In production, retrieve this value dynamically from SecurityContextHolder.getContext()
+            String currentAppUser = "GLOBAL_SUPV"; 
+            
+            String setContextSql = "{call jurisdiction_security_pkg.set_session_jurisdiction(?)}";
+            try (CallableStatement ctxStmt = conn.prepareCall(setContextSql)) {
+                ctxStmt.setString(1, "EU"); // Set execution target region
+                ctxStmt.execute();
+            }
+
+            // 2. QUERY STEP: Execute the hybrid vector + graph pipeline query
+            // The database engine automatically triggers your compliance filters, trigger rules, and logging logs
+            String querySql = """
+                SELECT ticket_id, rrf_score, summary, component_name, engineer_name 
+                FROM TABLE(support_analytics_pkg.get_hybrid_graph_context(?, ?))
+            """;
+            
+            try (CallableStatement queryStmt = conn.prepareCall(querySql)) {
+                queryStmt.setString(1, searchText);
+                queryStmt.setInt(2, maxResults);
+                
+                try (ResultSet rs = queryStmt.executeQuery()) {
+                    while (rs.next()) {
+                        results.add(new SupportContextResponse(
+                            rs.getLong("ticket_id"),
+                            rs.getBigDecimal("rrf_score"),
+                            rs.getString("summary"), // Automatically masked by DBMS_REDACT
+                            rs.getString("component_name"),
+                            rs.getString("engineer_name")
+                        ));
+                    }
+                }
+            }
+            return null;
+        });
+
+        return results;
+    }
+}
+
+```
+
 Use code with caution.
 
-----------	
+----------
+
+4. Spring AI Controller with Error Propagation
+
+This controller layer accepts standard user prompts. If an application user tries to pass a malicious prompt-injection string, the Oracle **`BEFORE DML Trigger`** catches it, rolls back the transaction, and throws a database exception (`SQLException`). The Java layer catches this exception and returns a structured response to the client. [[1](https://www.sohamkamani.com/java/openrouter/), [2](https://medium.com/@yavuzyasincelik/introducing-a-centralized-error-handling-framework-in-spring-applications-163d119c7613)]
+
+java
+
+```
+package com.example.aidatagateway.controller;
+
+import com.example.aidatagateway.dto.SupportContextResponse;
+import com.example.aidatagateway.service.SupportAnalyticsService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/v1/compliance-search")
+public class SupportAIController {
+
+    @Autowired
+    private SupportAnalyticsService analyticsService;
+
+    @PostMapping
+    public ResponseEntity<?> searchKnowledgeBase(
+            @RequestBody Map<String, Object> payload) {
+        
+        String searchText = (String) payload.get("search_text");
+        int maxResults = (Integer) payload.getOrDefault("max_results", 5);
+
+        try {
+            List<SupportContextResponse> dataContext = analyticsService.getSecureHybridContext(searchText, maxResults);
+            return ResponseEntity.ok(Map.of("search_results", dataContext));
+            
+        } catch (Exception e) {
+            // Intercepts Oracle custom trigger error exceptions (-20101 for prompt injections)
+            if (e.getMessage().contains("ORA-20101")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "SECURITY EXCEPTION: Prompt Injection String Intercepted by Database Firewall."));
+            }
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "System execution error: " + e.getMessage()));
+        }
+    }
+}
+
+```
+
+Use code with caution.
+
+Production Runtime Advantages with Spring AI
+
+-   **No Middle Tier Leakage:** Sensitive data fields (like credit card numbers) are masked inside database memory _before_ being written to the network socket, ensuring your Java runtime environment never holds plaintext PII in memory.
+-   **Streamlined Middle Tier Code:** Your Spring AI codebase remains lightweight and fast. It doesn't need to manually orchestrate complex vector math or graph database connections because Oracle 26ai handles everything via single database connection. [[1](https://medium.com/@tim_wang/spec-kit-bmad-and-agent-os-e8536f6bf8a4), [2](https://blogs.oracle.com/developers/how-i-added-memory-to-an-ai-agent-using-spring-ai-and-oracle-database)]
+
+1. Spring AI Dependencies (`pom.xml`)
+
+Ensure your Maven configuration contains the appropriate Spring AI orchestration starters:
+
+xml
+
+```
+<dependencies>
+    <!-- Core Spring AI Starter for LLM Orchestration -->
+    <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+        <version>1.0.0-M1</version>
+    </dependency>
+</dependencies>
+
+```
+
+Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTE0NTIzMzkxMiwtMTI2Mzc2NzE0OV19
+eyJoaXN0b3J5IjpbLTExNjM2MzA0LC0xMjYzNzY3MTQ5XX0=
 -->
