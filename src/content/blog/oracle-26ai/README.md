@@ -952,24 +952,17 @@ public class GraphRagController {
 }
 ```
 
-End-to-End Execution Flow (Verification)
-
-Production Payload Input:
-
-json
+### End-to-End Execution Flow (Verification)
 
 ```
 {
   "question": "What checkout validation problems occurred on our pipeline nodes?"
 }
-
 ```
 
-Use code with caution.
 
-Final Response Produced by Spring AI:
+### Final Response Produced by Spring AI:
 
-json
 
 ```
 {
@@ -977,8 +970,6 @@ json
 }
 
 ```
-
-Use code with caution.
 
 Complete Multi-Tiered Architecture Summary
 
@@ -994,11 +985,10 @@ You have built a fully audited, enterprise-ready AI data layer in Oracle Databas
 4.  **LLM Synthesis:** The sanitized, relational context is returned to Java, where Spring AI passes it safely to the Large Language Model to generate a final response.
 To enforce all 20 regulatory compliance regimes natively within **Oracle Database 26ai**, we will implement a centralized, modular PL/SQL Stored Procedure (`SP`). This procedure acts as a definitive zero-trust gateway for your Spring AI application tier. It evaluates, sanitizes, tracks, and isolates data transactions _before_ any text generation or vector search occurs.
 
-1. Unified Compliance Supporting Infrastructure
+### 1. Unified Compliance Supporting Infrastructure
 
 Execute this foundational schema layout to support the strict cryptographic, ledger, validation, and consent checks required by the compliance regimes.
 
-sql
 
 ```
 -- SOX & UDAAP: Tamper-proof logging infrastructure
@@ -4979,5 +4969,5 @@ class DataSeedLoadIntegrationTest {
 
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTQ2MDQwMjkwMywtMTk5MzQ5NTk3N119
+eyJoaXN0b3J5IjpbNTUxODQ4NDQ1LC0xOTkzNDk1OTc3XX0=
 -->
