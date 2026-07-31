@@ -1280,7 +1280,70 @@ WHERE VECTOR_DISTANCE(ticket_vector, :eval_vector, COSINE) < 0.40
 Use code with caution.
 
 -   **Why it fixes it:** It ensures strict compliance by filtering out records with hidden demographic dependencies before they reach the text-generation phase.
+
+Challenge 4: Traceable Explanation for Credit Decisions (FCRA)
+
+-   **The Problem:** The Fair Credit Reporting Act (FCRA) dictates that if an institution takes an adverse action on an application (such as denying a credit increase), they must provide the consumer with a clear, traceable list of specific reasons.
+-   **Traditional Failure:** An agent asks an interactive AI assistant why a credit line increase was denied. The vector search matches an unstructured email thread containing speculative remarks from a support rep (_"Looks like they had too many inquiries last month maybe?"_). The AI presents this guess to the agent as the official reason, leaving the bank open to regulatory penalties for providing non-auditable reasons for credit decisions.
+-   **The Unified Solution:** The system combines a vector search (to find the client's original query context) with a property graph match that maps the application to the exact, immutable deterministic underwriting engine log node. This ensures that the generated text relies strictly on the structured, auditable reasons stored in the system log.
+
+sql
+
+```
+SELECT hc.ticket_id,
+       'OFFICIAL REASON CODE: ' || gt.reason_code || ' | DESCRIPTION: ' || gt.audit_description AS fcra_rationale
+FROM (
+    SELECT ticket_id 
+    FROM helpdesk_tickets
+    WHERE VECTOR_DISTANCE(ticket_vector, :search_query, COSINE) < 0.35
+    FETCH FIRST 1 ROWS ONLY
+) hc
+CROSS JOIN GRAPH_TABLE(support_knowledge_graph
+    MATCH (t IS Ticket) -[:REFERENCES]-> (app IS CreditApplication) -[:EVALUATED_BY]-> (rule IS UnderwritingLog)
+    WHERE t.ticket_id = hc.ticket_id
+    COLUMNS (
+        rule.reason_code AS reason_code,
+        rule.audit_text AS audit_description
+    )
+) gt;
+
+```
+
+Use code with caution.
+
+-   **Why it fixes it:** It prevents the LLM from synthesizing speculative answers by binding the generative context directly to immutable, deterministic database logs.
+Summary of Structural Fixes
+
+Traditional Operational Failure
+
+Root Database Cause
+
+Oracle 26ai Vector-Graph Solution
+
+**Data Leaks during Active Investigations**
+
+Separate app-tier lookups create race conditions.
+
+**Native Guard:** VPD and graph scans filter data inside memory before processing.
+
+**Outdated Financial Disclosures**
+
+Static text vectors become stale when rates change.
+
+**Live Token Swapping:** Property graph joins inject live database ledger rates into the text context.
+
+**Unconscious Demographic Biases**
+
+Unstructured text implicitly contains protected attributes.
+
+**Entity Filtering:** Graph path exclusions remove tickets with demographic dependencies from search pools.
+
+**Speculative or Non-Auditable Approvals**
+
+RAG pipelines surface unstructured chat notes instead of formal system logs.
+
+**Determined Context Chains:** Vector targets are forced to join to cryptographic system logs via graph properties.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTY2MzgzMzA5NSwxMDIxODQxODA0LC0xMj
-YzNzY3MTQ5XX0=
+eyJoaXN0b3J5IjpbLTExNDMwNTc5NTAsMTAyMTg0MTgwNCwtMT
+I2Mzc2NzE0OV19
 -->
