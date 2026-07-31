@@ -4275,8 +4275,72 @@ COMMIT;
 
 ```
 
+Part 2: Dynamic DAG Delta Evaluation Service (PL/SQL)
+
+This database service compares an older cluster configuration against a newer baseline. It evaluates node data, tracks relationship changes across the DAG, and outputs a structured delta result set.
+
+sql
+
+```
+CREATE OR REPLACE PACKAGE openshift_topology_viz_api AS
+    PROCEDURE get_dynamic_dag_delta(
+        p_target_label      IN  VARCHAR2,
+        p_base_version      IN  NUMBER,
+        p_compare_version   IN  NUMBER,
+        p_viz_cursor        OUT SYS_REFCURSOR
+    );
+END openshift_topology_viz_api;
+/
+
+CREATE OR REPLACE PACKAGE BODY openshift_topology_viz_api AS
+
+    PROCEDURE get_dynamic_dag_delta(
+        p_target_label      IN  VARCHAR2,
+        p_base_version      IN  NUMBER,
+        p_compare_version   IN  NUMBER,
+        p_viz_cursor        OUT SYS_REFCURSOR
+    ) IS
+    BEGIN
+        -- Generate a combined relational result set comparing the two topology frames
+        OPEN p_viz_cursor FOR
+            WITH base_topology AS (
+                SELECT r.resource_uid, r.resource_name, r.resource_kind, r.operational_state,
+                       e.child_uid AS downstream_connection
+                FROM openshift_resources r
+                LEFT JOIN openshift_resource_dag_edges e ON r.resource_uid = e.parent_uid
+                WHERE r.resource_label = p_target_label AND r.snapshot_version = p_base_version
+            ),
+            compare_topology AS (
+                SELECT r.resource_uid, r.resource_name, r.resource_kind, r.operational_state,
+                       e.child_uid AS downstream_connection
+                FROM openshift_resources r
+                LEFT JOIN openshift_resource_dag_edges e ON r.resource_uid = e.parent_uid
+                WHERE r.resource_label = p_target_label AND r.snapshot_version = p_compare_version
+            )
+            -- Intersect datasets to isolate mutations, additions, and deletions inside the cluster graph
+            SELECT 
+                nvl(c.resource_uid, b.resource_uid) AS resource_id,
+                nvl(c.resource_name, b.resource_name) AS node_name,
+                nvl(c.resource_kind, b.resource_kind) AS component_kind,
+                nvl(c.downstream_connection, b.downstream_connection) AS target_edge_id,
+                CASE 
+                    WHEN b.resource_uid IS NULL THEN 'ADDED'
+                    WHEN c.resource_uid IS NULL THEN 'DELETED'
+                    WHEN b.operational_state != c.operational_state THEN 'MUTATED_STATE_FAILING'
+                    ELSE 'UNMODIFIED'
+                END AS topology_delta_status
+            FROM base_topology b
+            FULL OUTER JOIN compare_topology c ON b.resource_uid = c.resource_uid 
+                                              AND (b.downstream_connection = c.downstream_connection OR b.downstream_connection IS NULL);
+    END get_dynamic_dag_delta;
+
+END openshift_topology_viz_api;
+/
+
+```
+
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTEwOTExOTU0MDMsMTI2OTk2NjUyOCwxMD
-IxODQxODA0LC0xMjYzNzY3MTQ5XX0=
+eyJoaXN0b3J5IjpbNzU4NDYxMTg3LC0xMDkxMTk1NDAzLDEyNj
+k5NjY1MjgsMTAyMTg0MTgwNCwtMTI2Mzc2NzE0OV19
 -->
