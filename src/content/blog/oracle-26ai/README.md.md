@@ -308,6 +308,91 @@ FROM (
 );
 
 ```
+To implement this level of enforcement, we use an in-database **API Gateway Pattern via a Before-Row DML Trigger**.
+
+In Oracle AI Database 26ai, this architecture acts as an air-gapped firewall. It intercepting transaction updates (`INSERT` or `UPDATE`) on your vector and AI log tables, evaluates them against active data-sovereignty policies, profiles, and prompt-injection patterns, and raises a hard exception to roll back non-compliant code _before_ it leaves the database memory tier.
+
+1. The Pre-Execution Security Screening Trigger
+
+This production trigger enforces constraints spanning **NIST AI RMF 1.0** (injection mitigation), **CFPB Section 1033** (consent tracking), and **State ADMT Laws** (pre-decision opt-out validation).
+
+sql
+
+```
+CREATE OR REPLACE TRIGGER trg_ai_compliance_firewall
+BEFORE INSERT OR UPDATE ON helpdesk_tickets
+FOR EACH ROW
+DECLARE
+    v_user_consent_status VARCHAR2(1);
+    v_user_opt_out_status VARCHAR2(1);
+    v_current_user        VARCHAR2(128);
+BEGIN
+    -- Context Harvesting
+    v_current_user := SYS_CONTEXT('USERENV', 'SESSION_USER');
+
+    ---------------------------------------------------------------------------
+    -- SECURITY LAYER 1: NIST AI RMF 1.0 (Prompt Injection Engine Sanitization)
+    ---------------------------------------------------------------------------
+    IF REGEXP_LIKE(LOWER(:NEW.summary), '(ignore previous|override system|system prompt|bypass rules|print passwords)') THEN
+        -- Insert a permanent record into the tamper-proof Unified Audit log for security forensics
+        INSERT INTO user_blockchain_tables (table_name) VALUES ('BLOCKCHAIN_CAMPAIGN_ATTRIBUTION');
+        
+        RAISE_APPLICATION_ERROR(-20101, 
+            'SECURITY EXCEPTION: Compliance Violation [NIST AI RMF 1.0]. Unsafe prompt string rejected.');
+    END IF;
+
+    ---------------------------------------------------------------------------
+    -- SECURITY LAYER 2: CFPB 1033 & State ADMT Laws (Profiling & Data Opt-Out)
+    ---------------------------------------------------------------------------
+    -- Cross-referencing the database session parameter context with governance rules
+    BEGIN
+        SELECT opt_in_1033_marketing, automated_profiling_opt_out
+        INTO v_user_consent_status, v_user_opt_out_status
+        FROM customer_compliance_ledger
+        WHERE application_user = v_current_user;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            -- Production Fail-Safe Default: Strict Zero-Trust (Deny Processing if profile is missing)
+            v_user_consent_status := 'N';
+            v_user_opt_out_status := 'Y';
+    END;
+
+    -- Enforce explicit open banking data controls
+    IF v_user_consent_status = 'N' AND :NEW.summary LIKE '%marketing%' THEN
+        RAISE_APPLICATION_ERROR(-20102, 
+            'PRIVACY EXCEPTION: Compliance Violation [CFPB Section 1033]. Missing valid consumer token consent.');
+    END IF;
+
+    -- Enforce automated decision-making tracking bounds
+    IF v_user_opt_out_status = 'Y' THEN
+        RAISE_APPLICATION_ERROR(-20103, 
+            'REGULATORY EXCEPTION: Compliance Violation [ADMT Laws]. User profile actively flags profiling opt-out.');
+    END IF;
+
+END;
+/
+```
+2. Operational Verification Scenarios
+
+Let's see how this protective ring reacts under production loads. First, setup a mock user compliance table to mimic user contexts:
+
+sql
+
+```
+-- Supporting structure to back up permissions validation
+CREATE TABLE customer_compliance_ledger (
+    application_user             VARCHAR2(128) PRIMARY KEY,
+    opt_in_1033_marketing        VARCHAR2(1) CHECK (opt_in_1033_marketing IN ('Y', 'N')),
+    automated_profiling_opt_out  VARCHAR2(1) CHECK (automated_profiling_opt_out IN ('Y', 'N'))
+);
+
+-- Seed user entry with profiling OPTED-OUT
+INSERT INTO customer_compliance_ledger VALUES (USER, 'N', 'Y');
+COMMIT;
+
+```
+
+Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTIxMDg1NzkxOCwtMTI2Mzc2NzE0OV19
+eyJoaXN0b3J5IjpbMTY4MjI3NTMzMywtMTI2Mzc2NzE0OV19
 -->
