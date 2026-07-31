@@ -4249,8 +4249,34 @@ public class OpenShiftEventIngestionEngine {
 
 ```
 
+To implement dynamic topology change visualization for your OpenShift cluster DAG, we combine **Oracle Database 26ai native graph analysis** with **Spring Boot 4 / Java 25 virtual threads**.
+
+Instead of forcing your frontend to process complex node trees, the database query identifies structural differences between two OpenShift snapshot frames natively. It calculates layout positions and generates a pre-formatted **DAG Topology Change Graph** that highlights added, modified, or failing infrastructure states instantly.
+
+----------
+
+Part 1: Relational Resource State Snapshots
+
+To track structural changes over time, we add an operational column (`resource_label`) to our schema and introduce an immutable snapshot architecture.
+
+sql
+
+```
+-- Alter resource configurations to support target labeling
+ALTER TABLE openshift_resources ADD (resource_label VARCHAR2(64) DEFAULT 'tier-1-core');
+ALTER TABLE openshift_resources ADD (operational_state VARCHAR2(30) DEFAULT 'RUNNING');
+ALTER TABLE openshift_resources ADD (snapshot_version NUMBER DEFAULT 1);
+
+-- Force an allocation update for our target query scenario
+UPDATE openshift_resources 
+SET operational_state = 'FAILING', snapshot_version = 2 
+WHERE resource_name = 'auth-service-pod-3';
+COMMIT;
+
+```
+
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMzg2MDY4ODEzLDEyNjk5NjY1MjgsMTAyMT
-g0MTgwNCwtMTI2Mzc2NzE0OV19
+eyJoaXN0b3J5IjpbLTEwOTExOTU0MDMsMTI2OTk2NjUyOCwxMD
+IxODQxODA0LC0xMjYzNzY3MTQ5XX0=
 -->
