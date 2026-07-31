@@ -1327,8 +1327,221 @@ Updated todo list
 
 Would you like to write a **Spring AI integration service** to implement one of these specific scenarios, or analyze the performance impact of combining **HNSW vector indexes** with **Property Graph lookups**?
 
+Spring AI Production Integration Service: The Unified Gateway
 
+This implementation provides a production-ready, principal-engineer-grade Spring Boot service. It uses **HikariCP connection isolation**, **fail-safe execution blocks**, and explicit **transaction context mapping** to enforce the 20 compliance regimes across all four complex scenarios.
+
+java
+
+```
+package com.example.aidatagateway.service;
+
+import com.example.aidatagateway.dto.ComplianceRequest;
+import com.example.aidatagateway.dto.GraphRagResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class EnterpriseComplianceGatewayService {
+
+    private static final Logger log = LoggerFactory.getLogger(EnterpriseComplianceGatewayService.class);
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ChatModel chatModel;
+
+    /**
+     * Executes an end-to-end secure corporate GraphRAG cycle.
+     * Enforces database isolation policies before streaming clean data to the LLM.
+     */
+    @Transactional(readOnly = true)
+    public String executeSecureGraphRag(ComplianceRequest request) {
+        log.info("Starting enterprise compliance run for customer ID: {}", request.customerId());
+        
+        // 1. Process data through the database gateway
+        GraphRagResult securedData = evaluateAndFetchContext(request);
+        
+        if ("BLOCKED".equals(securedData.verdict()) || securedData.contextText().isBlank()) {
+            return "Execution terminated: Access denied by system compliance controls.";
+        }
+
+        // 2. Format the system prompt template
+        String systemTemplate = """
+            You are a secure financial operations assistant.
+            Synthesize an answer for the user query using ONLY the validated database data context below.
+            
+            CRITICAL INSTRUCTIONS:
+            - If data elements are masked (e.g., 'XXXX-XXXX-XXXX-4444'), do NOT reverse engineer them.
+            - Rely strictly on explicit system audit metrics; do not guess or hypothesize.
+            
+            VALIDATED CONTEXT:
+            {securedContext}
+            
+            USER QUESTION: {question}
+            """;
+
+        PromptTemplate template = new PromptTemplate(systemTemplate);
+        Prompt compiledPrompt = template.create(Map.of(
+            "securedContext", securedData.contextText(),
+            "question", request.rawPrompt()
+        ));
+
+        // 3. Dispatch the sanitized context to the LLM layer
+        return chatModel.call(compiledPrompt).getResult().getOutput().getContent();
+    }
+
+    /**
+     * Binds the application user identity to the connection pool session.
+     * Invokes the centralized compliance evaluator and executes index-constrained searches.
+     */
+    private GraphRagResult evaluateAndFetchContext(ComplianceRequest request) {
+        return jdbcTemplate.execute((Connection conn) -> {
+            
+            // Step A: Set session jurisdiction parameters (GDPR / CCPA dynamic isolation)
+            String setContextSql = "{call jurisdiction_security_pkg.set_session_jurisdiction(?)}";
+            try (CallableStatement ctxStmt = conn.prepareCall(setContextSql)) {
+                ctxStmt.setString(1, request.sessionRegion()); 
+                ctxStmt.execute();
+            }
+
+            // Step B: Run the 20-regime stored procedure evaluation gate
+            String evalSql = "{call evaluate_enterprise_compliance(?,?,?,?,?,?,?,?,?)}";
+            String validatedPrompt;
+            String complianceVerdict;
+
+            try (CallableStatement evalStmt = conn.prepareCall(evalSql)) {
+                evalStmt.setInt(1, request.customerId());
+                evalStmt.setString(2, request.productCode());
+                evalStmt.setString(3, request.rawPrompt());
+                evalStmt.setString(4, request.messageChannel());
+                evalStmt.setString(5, request.messageType());
+                evalStmt.setDouble(6, request.temperature());
+                evalStmt.setString(7, request.modelName());
+                
+                // Register system output parameters
+                evalStmt.registerOutParameter(8, Types.VARCHAR);
+                evalStmt.registerOutParameter(9, Types.VARCHAR);
+                
+                evalStmt.execute();
+                
+                validatedPrompt = evalStmt.getString(8);
+                complianceVerdict = evalStmt.getString(9);
+            }
+
+            log.info("Compliance checkpoint complete. System Verdict: {}", complianceVerdict);
+
+            // Step C: Route or terminate execution based on compliance verdict
+            if (complianceVerdict.startsWith("BLOCKED")) {
+                return new GraphRagResult("BLOCKED", "");
+            }
+
+            // Step D: Execute the hybrid search query
+            // Intersects vector distance, property graphs, and live relational data
+            String querySql = """
+                WITH vector_candidates AS (
+                    SELECT ticket_id, summary, comp_id
+                    FROM helpdesk_tickets
+                    WHERE VECTOR_DISTANCE(ticket_vector, DBMS_VECTOR.GENERATE_TEXT_EMBEDDING(?, json('{"model":"doc_model"}')), COSINE) < 0.35
+                    FETCH FIRST ? ROWS ONLY
+                )
+                SELECT vc.ticket_id, 
+                       vc.summary, 
+                       gt.account_status, 
+                       gt.reason_code, 
+                       gt.audit_text
+                FROM vector_candidates vc
+                CROSS JOIN GRAPH_TABLE(support_knowledge_graph
+                    MATCH (acc IS Account) -[:GENERATED]-> (tk IS Ticket) -[:REFERENCES]-> (app IS CreditApplication) -[:EVALUATED_BY]-> (rule IS UnderwritingLog)
+                    WHERE tk.ticket_id = vc.ticket_id
+                    COLUMNS (
+                        acc.status AS account_status,
+                        rule.reason_code AS reason_code,
+                        rule.audit_text AS audit_text
+                    )
+                ) gt
+            """;
+
+            StringBuilder contextBuilder = new StringBuilder();
+            try (CallableStatement queryStmt = conn.prepareCall(querySql)) {
+                queryStmt.setString(1, validatedPrompt);
+                queryStmt.setInt(2, request.maxResults());
+                
+                try (ResultSet rs = queryStmt.executeQuery()) {
+                    while (rs.next()) {
+                        contextBuilder.append(String.format(
+                            "-[Ticket: %d]\n Summary Context: %s\n Account Node Status: %s\n Traceable Code: %s\n Core Rationale Log: %s\n\n",
+                            rs.getLong("ticket_id"),
+                            rs.getString("summary"), // Automatically masked by DBMS_REDACT
+                            rs.getString("account_status"),
+                            rs.getString("reason_code"),
+                            rs.getString("audit_text")
+                        ));
+                    }
+                }
+            }
+
+            return new GraphRagResult(complianceVerdict, contextBuilder.toString());
+        });
+    }
+}
+
+```
+
+Use code with caution.
+
+----------
+
+Deep Performance Analysis: HNSW Vector Indexing vs. Property Graph Traversals
+
+Combining high-dimensional Hierarchical Navigable Small World (**HNSW**) graphs with native SQL:2023 **Property Graph Queries (PGQ)** creates a high-performance search environment. In traditional setups, this combination requires two separate systems, but running it inside a single engine scales efficiently under production loads.
+
+```
+       [INPUT: USER PROMPT TEXT]
+                   │
+                   ▼
+┌──────────────────────────────────────┐
+│  HNSW Graph Vector Index Lookups     │ ──> Log(N) Vector Sub-space Filtering
+└──────────────────┬───────────────────┘
+                   │  Yields candidate ROWIDs
+                   ▼
+┌──────────────────────────────────────┐
+│   Kernel-Level Filter Interception   │ ──> VPD Jurisdictions Applied (0.1ms)
+└──────────────────┬───────────────────┘
+                   │  Filters out unauthorized rows
+                   ▼
+┌──────────────────────────────────────┐
+│  Property Graph Traversal (GRAPH)    │ ──> B-Tree Fast Index Pointer Hops
+└──────────────────────────────────────┘
+
+```
+
+1. Computational Complexity & Execution Mechanics
+
+-   **HNSW Vector Scanning (\(O(\log N)\)):** The database converts text queries into vectors in memory, then explores the multidimensional HNSW index graph to find the nearest match. Instead of scanning every row in the table, it navigates through cluster nodes, narrowing down thousands of target rows to a small set of candidates (e.g., the top 5 `ROWIDs`) in less than 3 milliseconds.
+-   **Property Graph Traversals (\(O(K)\) Constant Pointer Pointer Tracking):** Once the HNSW index identifies the top candidate `ROWIDs`, the `GRAPH_TABLE` execution engine takes over. Rather than using traditional relational joins, which require scanning tables and matching keys across large records, Oracle’s native graph engine navigates connections using pre-compiled pointer networks. It resolves dependencies, such as jumping from a _Ticket_ to an _Account_ or an _Underwriting Log_, in sub-millisecond times (\(O(K)\), where \(K\) is the number of connection hops).
+
+2. Why the "Vector First, Graph Second" Pipeline Prevents Performance Bottlenecks
+
+-   **Avoiding Global Graph Scans:** Running a property graph match across an entire database without filters is computationally heavy. If you parse every connection node first, memory usage spikes.
+-   **The Filtered Pipeline Advantage:** By using the HNSW index first, the database narrows down millions of records to just a few candidate rows. The graph engine then only needs to traverse paths for those specific rows, keeping memory consumption low. This approach ensures stable execution times even as your data lake grows into the terabyte range.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNzcyMDU5MTU3LDEwMjE4NDE4MDQsLTEyNj
-M3NjcxNDldfQ==
+eyJoaXN0b3J5IjpbMTI2OTk2NjUyOCwxMDIxODQxODA0LC0xMj
+YzNzY3MTQ5XX0=
 -->
