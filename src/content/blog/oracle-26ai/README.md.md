@@ -576,7 +576,114 @@ NO DROP UNTIL 365 DAYS AFTER INSERT;
 
 Use code with caution.
 
+. Reviewing Cryptographic Integrity and Logs
 
+Auditors can inspect internal row-chain hashes and signature receipts using standard dictionary metadata columns (`ORABCTAB_HASH$`, `ORABCTAB_SIGNATURE$`). This ensures that no entries have been retroactively altered.
+
+sql
+
+```
+-- Query the ledger to check the internal cryptographic sequence details
+SELECT log_id, 
+       session_user, 
+       search_prompt, 
+       sanitization_state,
+       SUBSTR(RAWTOHEX(ORABCTAB_HASH$), 1, 16) || '...' AS cryptographic_chain_link
+FROM compliance_ai_audit_ledger
+ORDER BY log_id ASC;
+
+```
+
+1. The Verification and Alerting Procedure
+
+We encapsulate the verification process within an administrative PL/SQL procedure. If it detects any gap, missing sequence, or hash mismatch, it records an error entry into an alert log.
+
+sql
+
+```
+-- Create an auxiliary table to hold verification anomaly history
+CREATE TABLE compliance_security_alerts (
+    alert_id          INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    alert_timestamp   TIMESTAMP DEFAULT SYSTIMESTAMP,
+    message           VARCHAR2(4000),
+    status            VARCHAR2(20) DEFAULT 'CRITICAL'
+);
+
+CREATE OR REPLACE PROCEDURE verify_blockchain_ledger_integrity AS
+    v_rows_verified   NUMBER := 0;
+    v_integrity_error EXCEPTION;
+    PRAGMA EXCEPTION_INIT(v_integrity_error, -5715); -- Maps to blockchain structural corruptions
+BEGIN
+    -- DBMS_BLOCKCHAIN_TABLE verifies rows within the specified table
+    -- Parameters: schema, table name, low timestamp (NULL = all), high timestamp (NULL = all)
+    DBMS_BLOCKCHAIN_TABLE.VERIFY_ROWS(
+        schema_name     => USER,
+        table_name      => 'COMPLIANCE_AI_AUDIT_LEDGER',
+        low_timestamp   => NULL,
+        high_timestamp  => NULL,
+        number_of_rows  => v_rows_verified
+    );
+
+    -- Log a successful execution baseline
+    INSERT INTO compliance_security_alerts (message, status) 
+    VALUES ('Daily Ledger Check Completed. Verified ' || v_rows_verified || ' transaction records. Chain status: VALID.', 'INFO');
+    COMMIT;
+
+EXCEPTION
+    WHEN v_integrity_error THEN
+        -- Catches any attempt to manually drop or alter blocks beneath the database engine layer
+        INSERT INTO compliance_security_alerts (message, status) 
+        VALUES ('CRITICAL SECURITY EXCEPTION: Cryptographic chain mismatch detected in COMPLIANCE_AI_AUDIT_LEDGER!', 'CRITICAL');
+        COMMIT;
+        
+    WHEN OTHERS THEN
+        INSERT INTO compliance_security_alerts (message, status) 
+        VALUES ('Execution Error during blockchain validation routine: ' || SQLERRM, 'WARNING');
+        COMMIT;
+END;
+/
+```
+
+. Registering the Automated Background Scheduler Job
+
+We attach this verification procedure to **`DBMS_SCHEDULER`** to automatically execute the process every day at 1:00 AM without human intervention.
+
+sql
+
+```
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB (
+        job_name        => 'JOB_DAILY_AI_AUDIT_VERIFICATION',
+        job_type        => 'STORED_PROCEDURE',
+        job_action      => 'verify_blockchain_ledger_integrity',
+        start_date      => TRUNC(SYSTIMESTAMP) + 1 + 1/24, -- Tomorrow at 01:00 AM
+        repeat_interval => 'FREQ=DAILY; BYHOUR=1; BYMINUTE=0; BYSECOND=0',
+        end_date        => NULL,
+        enabled         => TRUE,
+        comments        => 'Automated daily verification engine for cryptographically chained AI logs.'
+    );
+END;
+/
+```
+
+3. Monitoring Verification History
+
+Compliance teams and security engineers can query the alerts log daily to prove continuous controls oversight for audit reports.
+
+sql
+
+```
+-- Query checking the outcome of the automated verification jobs
+SELECT alert_timestamp, 
+       status, 
+       message 
+FROM compliance_security_alerts
+ORDER BY alert_timestamp DESC;
+
+```
+
+Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTgxMTM4NjExNywtMTI2Mzc2NzE0OV19
+eyJoaXN0b3J5IjpbLTExNTc0MDAwMDQsLTEyNjM3NjcxNDldfQ
+==
 -->
