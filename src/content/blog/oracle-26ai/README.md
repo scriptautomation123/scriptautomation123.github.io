@@ -1030,11 +1030,9 @@ CREATE TABLE nudge_approval_queue (
 
 ```
 
-2. Core Operational Enterprise Compliance Engine
+### 2. Core Operational Enterprise Compliance Engine
 
 This stored procedure encapsulates all 20 checks. It handles everything from input regex validation and token replacement to model risk tracking and audit trail generation.
-
-sql
 
 ```
 CREATE OR REPLACE PROCEDURE evaluate_enterprise_compliance (
@@ -1168,17 +1166,13 @@ BEGIN
 
     -- 12. FCRA: Rationale Extraction
     p_final_prompt := p_final_prompt || ' [FCRA DETERMINISTIC RATIONALE CODE: DTL-MIG-784]';
-
-    
 ```
 
-allenge 1: The "Anti-Tipping" Security Mandate (BSA / AML)
+### challenge 1: The "Anti-Tipping" Security Mandate (BSA / AML)
 
 -   **The Problem:** Under the Bank Secrecy Act (BSA) and Anti-Money Laundering (AML) regulations, if a customer is under an active, confidential fraud investigation, a support agent or automated AI system **must not tip them off**.
 -   **Traditional Failure:** The application server runs a vector search to find support context for an incoming customer chat. The vector index returns matching fraud policy documentation. The application layer must then perform a separate database lookup to check if the user is under investigation, creating a race condition. If the app-tier check fails or lags, the AI might inadvertently tell the customer: _"Your transaction is blocked due to active AML Investigation File #902."_
 -   **The Unified Solution:** A single hybrid SQL query resolves the vector search, intersects it with an operational graph of account relationships, and applies a Virtual Private Database (VPD) policy at the kernel level. If the account node is flagged as under investigation, the text and vector fields are automatically redacted before they hit the application memory.
-
-sql
 
 ```
 -- Hybrid Vector Search + Property Graph Match with Security Policy Filter
@@ -1197,16 +1191,13 @@ CROSS JOIN GRAPH_TABLE(support_knowledge_graph
 ) gt
 WHERE VECTOR_DISTANCE(ticket_vector, :query_embedding, COSINE) < 0.35
 ORDER BY match_score DESC;
-
 ```
 
-Challenge 2: Regulatory Disclosure Enforcement (Reg Z / Reg DD)
+### Challenge 2: Regulatory Disclosure Enforcement (Reg Z / Reg DD)
 
 -   **The Problem:** The Truth in Lending Act (Reg Z) and Truth in Savings Act (Reg DD) mandate that financial offers (like credit card APRs or deposit APYs) match official product terms exactly.
 -   **Traditional Failure:** An LLM processes a customer prompt using standard Retrieval-Augmented Generation (RAG). The vector index retrieves a historical product ticket from six months ago stating: _"Enjoy a limited promotional rate of 4.99% APY."_ The LLM formats this outmoded text into the response. Because the core product ledger rates have changed since the text was indexed, the institution is now exposed to a serious compliance violation for displaying inaccurate disclosures.
 -   **The Unified Solution:** Instead of serving raw historical text to the LLM, the database executes a vector search to find the correct ticket, uses a graph lookup to trace the product category to the _live_ financial rate table, and swaps the stale numbers with live values using deterministic PL/SQL string interpolation.
-
-sql
 
 ```
 WITH vector_matches AS (
@@ -1230,16 +1221,13 @@ CROSS JOIN GRAPH_TABLE(support_knowledge_graph
         f.verbatim_apy AS verbatim_apy
     )
 ) gt;
-
 ```
 
-Challenge 3: Indirect Demographic Discrimination Blocks (Reg B / ECOA)
+### Challenge 3: Indirect Demographic Discrimination Blocks (Reg B / ECOA)
 
 -   **The Problem:** Under the Equal Credit Opportunity Act (ECOA), credit evaluation systems cannot make decisions based on protected attributes (such as age, gender, race, or zip codes linked to demographic groups).
 -   **Traditional Failure:** A bank feeds a credit-evaluation RAG pipeline customer communication profiles. While explicit demographic fields are removed from the database, the unstructured notes contain statements like _"Customer attended a senior community event near zip code 90210."_ The vector engine surfaces these tickets due to latent semantic similarities, and the LLM unwittingly re-introduces demographic biases into its final credit recommendations.
 -   **The Unified Solution:** The database runs a vector query over the text but routes the results through a Graph View that excludes protected attribute nodes and entities. Any candidate record that shares a graph connection with restricted entities is automatically discarded in memory before the application layer can access it.
-
-ql
 
 ```
 SELECT ticket_id, summary
@@ -1256,17 +1244,13 @@ WHERE VECTOR_DISTANCE(ticket_vector, :eval_vector, COSINE) < 0.40
 
 ```
 
-Use code with caution.
-
 -   **Why it fixes it:** It ensures strict compliance by filtering out records with hidden demographic dependencies before they reach the text-generation phase.
 
-Challenge 4: Traceable Explanation for Credit Decisions (FCRA)
+### Challenge 4: Traceable Explanation for Credit Decisions (FCRA)
 
 -   **The Problem:** The Fair Credit Reporting Act (FCRA) dictates that if an institution takes an adverse action on an application (such as denying a credit increase), they must provide the consumer with a clear, traceable list of specific reasons.
 -   **Traditional Failure:** An agent asks an interactive AI assistant why a credit line increase was denied. The vector search matches an unstructured email thread containing speculative remarks from a support rep (_"Looks like they had too many inquiries last month maybe?"_). The AI presents this guess to the agent as the official reason, leaving the bank open to regulatory penalties for providing non-auditable reasons for credit decisions.
 -   **The Unified Solution:** The system combines a vector search (to find the client's original query context) with a property graph match that maps the application to the exact, immutable deterministic underwriting engine log node. This ensures that the generated text relies strictly on the structured, auditable reasons stored in the system log.
-
-sql
 
 ```
 SELECT hc.ticket_id,
@@ -1288,7 +1272,6 @@ CROSS JOIN GRAPH_TABLE(support_knowledge_graph
 
 ```
 
-Use code with caution.
 
 -   **Why it fixes it:** It prevents the LLM from synthesizing speculative answers by binding the generative context directly to immutable, deterministic database logs.
 Summary of Structural Fixes
@@ -4969,5 +4952,5 @@ class DataSeedLoadIntegrationTest {
 
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNTUxODQ4NDQ1LC0xOTkzNDk1OTc3XX0=
+eyJoaXN0b3J5IjpbMTgwMzYwMjg3OCwtMTk5MzQ5NTk3N119
 -->
