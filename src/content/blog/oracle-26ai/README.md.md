@@ -2859,7 +2859,141 @@ ORGANIZATION INMEMORY NEIGHBOR GRAPH
 DISTANCE COSINE
 LOCAL; -- Key directive: Allocates isolated index memory blocks per partit
 ```
+
+2. High-Scale Administrative Marketing API Package
+
+This production package consolidates all three advanced marketing patterns (**Life-Event Churn Prevention**, **B2B Equipment Upsells**, and **Financial Distress Mitigation**) into a single execution endpoint.
+
+It handles region verification automatically. By explicitly requiring the session region (`p_session_region`), the database engine safely prunes the vector search space, scanning only the relevant regional index block to maintain fast query times.
+
+sql
+
+```
+CREATE OR REPLACE PACKAGE global_marketing_analytics_api AS
+    -- Global core record definition for pipeline cursor streaming mapping
+    TYPE marketing_target_rec IS RECORD (
+        customer_id      NUMBER,
+        affinity_score   NUMBER,
+        compliance_copy  VARCHAR2(4000),
+        assigned_owner   VARCHAR2(200)
+    );
+    TYPE marketing_target_tbl IS TABLE OF marketing_target_rec;
+
+    -- Unified administration execution gateway
+    FUNCTION execute_targeted_campaign(
+        p_session_user     IN VARCHAR2,
+        p_session_region   IN VARCHAR2, -- 'EU', 'US', 'APAC'
+        p_campaign_strategy IN VARCHAR2, -- 'CHURN_INTERCEPT', 'B2B_UPSELL', 'DISTRESS_MITIGATION'
+        p_strategy_prompt  IN VARCHAR2,
+        p_limit            IN INT
+    ) RETURN marketing_target_tbl PIPELINED;
+END global_marketing_analytics_api;
+/
+
+CREATE OR REPLACE PACKAGE BODY global_marketing_analytics_api AS
+
+    FUNCTION execute_targeted_campaign(
+        p_session_user     IN VARCHAR2,
+        p_session_region   IN VARCHAR2,
+        p_campaign_strategy IN VARCHAR2,
+        p_strategy_prompt  IN VARCHAR2,
+        p_limit            IN INT
+    ) RETURN marketing_target_tbl PIPELINED IS
+        v_query_vector     VECTOR(384, FLOAT32);
+        v_rec              marketing_target_rec;
+        
+        -- Safe compliance verification variables
+        v_current_hour     INT;
+    BEGIN
+        v_current_hour := EXTRACT(HOUR FROM SYSTIMESTAMP);
+
+        --------------------------------────────────────-----------------------
+        -- COMPLIANCE BLOCK: In-Database Input Filtering (NIST AI RMF 1.0)
+        --------------------------------────────────────-----------------------
+        IF REGEXP_LIKE(LOWER(p_strategy_prompt), '(ignore previous|override system|bypass rules)') THEN
+            RAISE_APPLICATION_ERROR(-20150, 'SECURITY VIOLATION: Execution blocked due to prompt injection attempt.');
+        END IF;
+
+        -- TCPA Outbound Compliance Check
+        IF (v_current_hour < 8 OR v_current_hour >= 21) THEN
+            RAISE_APPLICATION_ERROR(-20151, 'REGULATORY COMPLIANCE BLOCK: Outreach requests cannot execute during quiet hours.');
+        END IF;
+
+        -----------------------------------------------------------------------
+        -- MEMORY EMBEDDING COMPILATION
+        -----------------------------------------------------------------------
+        v_query_vector := DBMS_VECTOR.GENERATE_TEXT_EMBEDDING(
+                             text  => p_strategy_prompt,
+                             params => json('{"model": "doc_model"}')
+                          );
+
+        --------------------------------────────────────-----------------------
+        -- STRATEGY EXECUTION ROUTING
+        -----------------------------------------------------------------------
+        CASE p_campaign_strategy
+            
+            --------------------------------───────────────────────────────────
+            -- STRATEGY 1: Life-Event Wealth Churn Interception (Reg B / GDPR)
+            --------------------------------───────────────────────────────────
+            WHEN 'CHURN_INTERCEPT' THEN
+                FOR r IN (
+                    WITH vector_subset AS (
+                        SELECT customer_id, 
+                               (1 - VECTOR_DISTANCE(interaction_vector, v_query_vector, COSINE)) * 100 AS score
+                        FROM distributed_customer_interactions
+                        -- Partition Pruning optimization: Limits the query to a single region's HNSW index segment
+                        WHERE data_jurisdiction = p_session_region 
+                          AND VECTOR_DISTANCE(interaction_vector, v_query_vector, COSINE) < 0.25
+                        FETCH FIRST p_limit ROWS ONLY
+                    )
+                    SELECT vs.customer_id, vs.score,
+                           'Household Private Wealth Retention Offer Generated.' AS text_copy,
+                           gt.senior_rm AS owner
+                    FROM vector_subset vs
+                    CROSS JOIN GRAPH_TABLE(marketing_compliance_graph
+                        MATCH (c IS Customer) -[:MEMBER_OF]-> (h IS Household),
+                              (h) -[:ASSIGNED_TO]-> (rm IS RelationshipManager),
+                              (c) -[:PRIVACY_BOUND]-> (p IS PrivacyLedger)
+                        WHERE c.customer_id = vs.customer_id
+                          AND p.automated_profiling_opt_out = 'N'
+                        COLUMNS (rm.name AS senior_rm)
+                    ) gt
+                ) LOOP
+                    v_rec.customer_id     := r.customer_id;
+                    v_rec.affinity_score  := r.score;
+                    v_rec.compliance_copy := r.text_copy;
+                    v_rec.assigned_owner  := r.owner;
+                    PIPE ROW(v_rec);
+                END LOOP;
+
+            
+```
+
+3. Verification Call Template
+
+Your application tier can query this API gateway package using a simple, standard SQL statement. The query passes the required session tokens and parameters to run high-performance searches across your partitioned dataset:
+
+sql
+
+```
+SELECT customer_id, 
+       ROUND(affinity_score, 2) AS match_pct, 
+       compliance_copy, 
+       assigned_owner
+FROM TABLE(
+    global_marketing_analytics_api.execute_targeted_campaign(
+        p_session_user      => 'APP_ROUTER_SERVICE',
+        p_session_region    => 'EU', -- Directs the engine to prune search parameters to European partitions
+        p_campaign_strategy => 'CHURN_INTERCEPT',
+        p_strategy_prompt   => 'Concerned about inheritance tax asset transfers for family wealth planning',
+        p_limit             => 3
+    )
+);
+
+```
+
+Use code with caution.\
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMzA4MTM4NjA5LDEyNjk5NjY1MjgsMTAyMT
-g0MTgwNCwtMTI2Mzc2NzE0OV19
+eyJoaXN0b3J5IjpbLTE0NDg2OTkyNDksMTI2OTk2NjUyOCwxMD
+IxODQxODA0LC0xMjYzNzY3MTQ5XX0=
 -->
