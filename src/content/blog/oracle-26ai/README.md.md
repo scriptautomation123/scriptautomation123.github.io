@@ -512,8 +512,39 @@ SELECT ticket_id, data_jurisdiction, summary FROM helpdesk_tickets;
 -- 99901      EU                 [EU Data Context Summary...]
 
 ```
+To implement data sanitization without losing the underlying semantic capability of your data, you can use **Oracle Data Redaction (`DBMS_REDACT`)** alongside your Virtual Private Database (VPD) layer.
+
+In Oracle AI Database 26ai, Data Redaction masks sensitive Personable Identifiable Information (PII) or Non-Public Personal Information (NPI) on output right as the data leaves the database. Crucially, **it protects values _after_ the query runs.** This means your internal database indexes, vector similarity engines, and graph pattern matchers still evaluate the raw, unredacted data to ensure highly accurate search results, but unauthorized application screens or logging tiers only receive a safe, masked string.
+
+----------
+1. The Dynamic Redaction Policy Definition
+
+The script below configures a policy on the `summary` column. It leaves standard text untouched so that users can read the tickets, but uses regular expressions to find and automatically mask 16-digit Primary Account Numbers (PANs/Credit Cards) and Social Security Numbers (SSNs), satisfying **PCI-DSS** and **GLBA** requirements.
+
+sql
+
+```
+BEGIN
+    DBMS_REDACT.ADD_POLICY(
+        object_schema       => USER,
+        object_name         => 'HELPDESK_TICKETS',
+        policy_name         => 'redact_customer_pii',
+        column_name         => 'summary',
+        expression          => 'SYS_CONTEXT(''jurisdiction_ctx'', ''region'') != ''GLOBAL_ADMIN''',
+        function_type       => DBMS_REDACT.REGEXP,
+        -- Regular expression matching 16-digit numeric card patterns separated by spaces/hyphens
+        regexp_pattern      => '([0-9]{4})[- ]?([0-9]{4})[- ]?([0-9]{4})[- ]?([0-9]{4})',
+        regexp_replace_string => 'XXXX-XXXX-XXXX-\4',
+        regexp_position     => 1,
+        regexp_occurrence   => 0, -- 0 means replace all instances found in the string
+        regexp_modifier     => 'i'
+    );
+END;
+/
+
+```
 
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNDgxODA3ODE1LC0xMjYzNzY3MTQ5XX0=
+eyJoaXN0b3J5IjpbNzc2OTk1Mjc4LC0xMjYzNzY3MTQ5XX0=
 -->
