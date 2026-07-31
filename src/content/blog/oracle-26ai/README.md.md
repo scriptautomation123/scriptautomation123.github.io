@@ -131,11 +131,21 @@ END support_analytics_pkg;
 ### execution 
 
 ```
--- Simulating a runtime execution with a dummy 384-dimensional query vector  
-SELECT ticket_id, ROUND(similarity_score, 2) AS match_pct, summary, component_name, engineer_name 
-FROM  TABLE( support_analytics_pkg.get_graph_rag_context( p_query_vector => VECTOR_EMBEDDING(doc_model USING  'Database connection timed out during ETL migration'), p_max_distance => 0.40, p_limit => 3 ) );
+-- Simulating a runtime execution with a dummy 384-dimensional query vector
+SELECT ticket_id, 
+       ROUND(similarity_score, 2) AS match_pct, 
+       summary, 
+       component_name, 
+       engineer_name
+FROM TABLE(
+    support_analytics_pkg.get_graph_rag_context(
+        p_query_vector => VECTOR_EMBEDDING(doc_model USING 'Database connection timed out during ETL migration'),
+        p_max_distance => 0.40,
+        p_limit        => 3
+    )
+);
 ```
 
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTM2NTIwMzA0NF19
+eyJoaXN0b3J5IjpbMTU0OTAzODhdfQ==
 -->
