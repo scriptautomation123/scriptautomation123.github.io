@@ -421,6 +421,99 @@ In Oracle AI Database 26ai, VPD automatically appends a dynamic `WHERE` clause t
 1. The Security Context and Policy Package
 
 First, we create a secure database context and a PL/SQL policy function. The function evaluates the current session's jurisdiction and returns a string that limits the visible data rows.
+
+-- Create a secure application context controlled strictly by a PL/SQL package
+CREATE OR REPLACE CONTEXT jurisdiction_ctx USING jurisdiction_security_pkg;
+/
+
+-- Define the policy package that determines data scope predicates at runtime
+CREATE OR REPLACE PACKAGE jurisdiction_security_pkg AS
+    -- Call this at session login to establish user geography
+    PROCEDURE set_session_jurisdiction(p_region IN VARCHAR2);
+    
+    -- VPD policy function that appends predicates to queries dynamically
+    FUNCTION row_level_security_policy(
+        p_schema IN VARCHAR2, 
+        p_table  IN VARCHAR2
+    ) RETURN VARCHAR2;
+END jurisdiction_security_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY jurisdiction_security_pkg AS
+
+    PROCEDURE set_session_jurisdiction(p_region IN VARCHAR2) IS
+    BEGIN
+        -- Strictly validate input to prevent context injection
+        IF p_region IN ('EU', 'CA', 'GLOBAL_ADMIN') THEN
+            DBMS_SESSION.SET_CONTEXT('jurisdiction_ctx', 'region', p_region);
+        ELSE
+            DBMS_SESSION.SET_CONTEXT('jurisdiction_ctx', 'region', 'RESTRICTED');
+        END IF;
+    END set_session_jurisdiction;
+
+    FUNCTION row_level_security_policy(
+        p_schema IN VARCHAR2, 
+        p_table  IN VARCHAR2
+    ) RETURN VARCHAR2 IS
+        v_region VARCHAR2(30);
+    BEGIN
+        -- Retrieve the region bound to the current database session
+        v_region := SYS_CONTEXT('jurisdiction_ctx', 'region');
+        
+        -- Global Admins bypass security scoping
+        IF v_region = 'GLOBAL_ADMIN' THEN
+            RETURN '1=1';
+        -- Enforce matching region tags on target tables
+        ELSIF v_region IN ('EU', 'CA') THEN
+            RETURN 'data_jurisdiction = ''' || v_region || '''';
+        -- Default Deny: If no valid region is initialized, return a blocking predicate
+        ELSE
+            RETURN '1=0';
+        END IF;
+    END row_level_security_policy;
+
+END jurisdiction_security_pkg;
+/
+
+To support this policy, tables must contain an operational data sovereignty tracking column (`data_jurisdiction`).
+
+sql
+
+```
+-- Alter your production tables to track compliance geography
+ALTER TABLE helpdesk_tickets ADD (data_jurisdiction VARCHAR2(10) DEFAULT 'EU');
+
+-- Update sample records for cross-jurisdiction testing
+UPDATE helpdesk_tickets SET data_jurisdiction = 'EU' WHERE ticket_id = 99901;
+UPDATE helpdesk_tickets SET data_jurisdiction = 'CA' WHERE ticket_id = 99902;
+COMMIT;
+
+```
+
+Use code with caution.
+
+4. Operational Verification Scenarios
+
+Test Case A: The European Connection (GDPR Active)
+
+sql
+
+```
+-- Application sets context for an EU connection pool thread
+EXEC jurisdiction_security_pkg.set_session_jurisdiction('EU');
+
+-- Query all rows
+SELECT ticket_id, data_jurisdiction, summary FROM helpdesk_tickets;
+
+-- OUTPUT EXPECTED: Only rows matching 'EU' are returned. 
+-- The CA row (99902) is invisible and completely omitted from index evaluation.
+-- TICKET_ID  DATA_JURISDICTION  SUMMARY
+-- -----------------------------------------------------------
+-- 99901      EU                 [EU Data Context Summary...]
+
+```
+
+Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTM3NjQzNTE4NCwtMTI2Mzc2NzE0OV19
+eyJoaXN0b3J5IjpbNDgxODA3ODE1LC0xMjYzNzY3MTQ5XX0=
 -->
