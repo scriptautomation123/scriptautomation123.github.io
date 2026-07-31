@@ -715,7 +715,57 @@ COMMIT;
 
 ```
 
+1. Spring Boot Configuration (`application.yml`)
+
+Configure your production connection pool (`HikariCP`) to connect directly to your Oracle 26ai database instance.
+
+yaml
+
+```
+spring:
+  application:
+    name: ai-compliance-gateway-service
+  datasource:
+    url: jdbc:oracle:thin:@//your-oracle-db-host:1521/FREEPDB1
+    username: APP_ROUTER
+    password: ${DB_PASSWORD_SECRET}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      pool-name: Oracle26aiVectorPool
+
+```
+
 Use code with caution.
+
+----------
+
+2. Spring AI Data Transfer Object (DTO)
+
+Create standard Java records to handle the structured data payload returned by the database's pipelined execution loop.
+
+java
+
+```
+package com.example.aidatagateway.dto;
+
+import java.math.BigDecimal;
+
+public record SupportContextResponse(
+    Long ticketId,
+    BigDecimal rrfScore,
+    String summary,
+    String componentName,
+    String engineerName
+) {}
+
+```
+
+Use code with caution.
+
+----------	
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNjY1OTg1MzgsLTEyNjM3NjcxNDldfQ==
+eyJoaXN0b3J5IjpbMTE0NTIzMzkxMiwtMTI2Mzc2NzE0OV19
 -->
