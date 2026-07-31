@@ -840,11 +840,7 @@ public class SupportAnalyticsService {
 
 ```
 
-Use code with caution.
-
-----------
-
-4. Spring AI Controller with Error Propagation
+#4. Spring AI Controller with Error Propagation
 
 This controller layer accepts standard user prompts. If an application user tries to pass a malicious prompt-injection string, the Oracle **`BEFORE DML Trigger`** catches it, rolls back the transaction, and throws a database exception (`SQLException`). The Java layer catches this exception and returns a structured response to the client. [[1](https://www.sohamkamani.com/java/openrouter/), [2](https://medium.com/@yavuzyasincelik/introducing-a-centralized-error-handling-framework-in-spring-applications-163d119c7613)]
 
@@ -4990,5 +4986,5 @@ class DataSeedLoadIntegrationTest {
 
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTE5OTM0OTU5NzddfQ==
+eyJoaXN0b3J5IjpbLTYzMDczNzc0MywtMTk5MzQ5NTk3N119
 -->
