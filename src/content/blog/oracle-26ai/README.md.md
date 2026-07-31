@@ -1221,8 +1221,66 @@ ORDER BY match_score DESC;
 
 ```
 
+Challenge 2: Regulatory Disclosure Enforcement (Reg Z / Reg DD)
+
+-   **The Problem:** The Truth in Lending Act (Reg Z) and Truth in Savings Act (Reg DD) mandate that financial offers (like credit card APRs or deposit APYs) match official product terms exactly.
+-   **Traditional Failure:** An LLM processes a customer prompt using standard Retrieval-Augmented Generation (RAG). The vector index retrieves a historical product ticket from six months ago stating: _"Enjoy a limited promotional rate of 4.99% APY."_ The LLM formats this outmoded text into the response. Because the core product ledger rates have changed since the text was indexed, the institution is now exposed to a serious compliance violation for displaying inaccurate disclosures.
+-   **The Unified Solution:** Instead of serving raw historical text to the LLM, the database executes a vector search to find the correct ticket, uses a graph lookup to trace the product category to the _live_ financial rate table, and swaps the stale numbers with live values using deterministic PL/SQL string interpolation.
+
+sql
+
+```
+WITH vector_matches AS (
+    SELECT ticket_id, summary, comp_id
+    FROM helpdesk_tickets
+    WHERE VECTOR_DISTANCE(ticket_vector, :user_prompt_vector, COSINE) < 0.30
+    FETCH FIRST 1 ROWS ONLY
+)
+SELECT vm.ticket_id,
+       -- Deterministically substitute dynamic product variables with live ledger rates
+       REGEXP_REPLACE(
+           REGEXP_REPLACE(vm.summary, '\{APR_TOKEN\}', TO_CHAR(f.verbatim_apr, '99.99') || '% APR'),
+           '\{APY_TOKEN\}', TO_CHAR(f.verbatim_apy, '99.99') || '% APY'
+       ) AS compliant_llm_context
+FROM vector_matches vm
+CROSS JOIN GRAPH_TABLE(support_knowledge_graph
+    MATCH (tk IS Ticket) -[:AFFECTS]-> (c IS Component) -[:MAPPED_TO]-> (f IS FinancialProduct)
+    WHERE tk.ticket_id = vm.ticket_id
+    COLUMNS (
+        f.verbatim_apr AS verbatim_apr,
+        f.verbatim_apy AS verbatim_apy
+    )
+) gt;
+
+```
+
+Challenge 3: Indirect Demographic Discrimination Blocks (Reg B / ECOA)
+
+-   **The Problem:** Under the Equal Credit Opportunity Act (ECOA), credit evaluation systems cannot make decisions based on protected attributes (such as age, gender, race, or zip codes linked to demographic groups).
+-   **Traditional Failure:** A bank feeds a credit-evaluation RAG pipeline customer communication profiles. While explicit demographic fields are removed from the database, the unstructured notes contain statements like _"Customer attended a senior community event near zip code 90210."_ The vector engine surfaces these tickets due to latent semantic similarities, and the LLM unwittingly re-introduces demographic biases into its final credit recommendations.
+-   **The Unified Solution:** The database runs a vector query over the text but routes the results through a Graph View that excludes protected attribute nodes and entities. Any candidate record that shares a graph connection with restricted entities is automatically discarded in memory before the application layer can access it.
+
+ql
+
+```
+SELECT ticket_id, summary
+FROM helpdesk_tickets vt
+WHERE VECTOR_DISTANCE(ticket_vector, :eval_vector, COSINE) < 0.40
+  AND NOT EXISTS (
+    SELECT 1 
+    FROM GRAPH_TABLE(support_knowledge_graph
+        MATCH (tk IS Ticket) -[:LINKED_TO]-> (dem IS ProtectedDemographics)
+        WHERE tk.ticket_id = vt.ticket_id
+        COLUMNS (dem.attribute_type AS attr)
+    )
+  );
+
+```
+
 Use code with caution.
+
+-   **Why it fixes it:** It ensures strict compliance by filtering out records with hidden demographic dependencies before they reach the text-generation phase.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTE0NjQ1NDM4MTAsMTAyMTg0MTgwNCwtMT
-I2Mzc2NzE0OV19
+eyJoaXN0b3J5IjpbMTY2MzgzMzA5NSwxMDIxODQxODA0LC0xMj
+YzNzY3MTQ5XX0=
 -->
