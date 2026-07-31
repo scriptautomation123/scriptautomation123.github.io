@@ -1003,6 +1003,55 @@ You have built a fully audited, enterprise-ready AI data layer in Oracle Databas
     -   **PCI-DSS / GLBA:** **`DBMS_REDACT`** masks credit cards and SSNs on the fly.
     -   **SOX / NYDFS:** All operations are tracked in an immutable, append-only **`Blockchain Table`**.
 4.  **LLM Synthesis:** The sanitized, relational context is returned to Java, where Spring AI passes it safely to the Large Language Model to generate a final response.
+To enforce all 20 regulatory compliance regimes natively within **Oracle Database 26ai**, we will implement a centralized, modular PL/SQL Stored Procedure (`SP`). This procedure acts as a definitive zero-trust gateway for your Spring AI application tier. It evaluates, sanitizes, tracks, and isolates data transactions _before_ any text generation or vector search occurs.
+
+1. Unified Compliance Supporting Infrastructure
+
+Execute this foundational schema layout to support the strict cryptographic, ledger, validation, and consent checks required by the compliance regimes.
+
+sql
+
+```
+-- SOX & UDAAP: Tamper-proof logging infrastructure
+CREATE BLOCKCHAIN TABLE blockchain_campaign_attribution (
+    log_id              INT,
+    app_user            VARCHAR2(128),
+    prompt_input        VARCHAR2(4000),
+    llm_output          VARCHAR2(4000),
+    temperature         NUMBER,
+    compliance_verdict  VARCHAR2(50),
+    log_timestamp       TIMESTAMP
+) NO DELETE UNTIL 365 DAYS AFTER INSERT NO DROP;
+
+-- CFPB 1033, State ADMT, TCPA, and Reg E: Customer Governance Matrix
+CREATE TABLE customer_compliance_ledger (
+    customer_id                 INT PRIMARY KEY,
+    opt_in_1033_marketing       VARCHAR2(1) CHECK (opt_in_1033_marketing IN ('Y','N')),
+    automated_profiling_opt_out VARCHAR2(1) CHECK (automated_profiling_opt_out IN ('Y','N')),
+    tcpa_sms_consent            VARCHAR2(1) CHECK (tcpa_sms_consent IN ('Y','N')),
+    marketing_opt_out           VARCHAR2(1) CHECK (marketing_opt_out IN ('Y','N')),
+    under_active_aml_invest     VARCHAR2(1) CHECK (under_active_aml_invest IN ('Y','N'))
+);
+
+-- Reg Z & Reg DD: Financial Rate Ledger Tables
+CREATE TABLE financial_product_ledger (
+    product_code        VARCHAR2(20) PRIMARY KEY,
+    verbatim_apr        NUMBER(5,2),
+    verbatim_apy        NUMBER(5,2)
+);
+
+-- EU AI Act: High-Risk Credit Assessment Staging Buffer
+CREATE TABLE nudge_approval_queue (
+    queue_id            INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    customer_id         INT,
+    proposed_nudge      VARCHAR2(4000),
+    human_approved      VARCHAR2(1) DEFAULT 'N',
+    created_at          TIMESTAMP DEFAULT SYSTIMESTAMP
+);
+
+```
+
+Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNTQ5ODM0ODI2LC0xMjYzNzY3MTQ5XX0=
+eyJoaXN0b3J5IjpbMTAyMTg0MTgwNCwtMTI2Mzc2NzE0OV19
 -->
