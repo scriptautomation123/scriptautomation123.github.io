@@ -682,8 +682,40 @@ ORDER BY alert_timestamp DESC;
 
 ```
 
+The architecture can be finalized by extending the framework to handle **Multi-Region Cross-Jurisdictional Evaluations**.
+
+In global deployments, data boundaries are rarely strictly separated. A supervisor based in New York (`CA`/`US` profile scope) may need authorized access to European (`EU`) or Asian (`APAC`) records for explicit oversight, without altering the underlying application architecture.
+
+To support this, we will migrate the system to a matrix-based access model using **Oracle Session Contexts** and dynamic **SQL Property Graph Traversals**.
+
+----------
+
+1. Upgrading the Security Clearance Schema
+
+First, replace the single-string assignment with a relational entitlement matrix. This allows an application user profile to map to multiple authorized jurisdictions simultaneously.
+
+sql
+
+```
+-- Create an explicit entitlement ledger table
+CREATE TABLE staff_jurisdiction_entitlements (
+    application_user    VARCHAR2(128),
+    authorized_region   VARCHAR2(10),
+    clearance_level     VARCHAR2(20), -- 'ANALYST', 'SUPERVISOR', 'AUDITOR'
+    PRIMARY KEY (application_user, authorized_region)
+);
+
+-- Seed production entries
+-- USER_1 is confined strictly to European data operations
+INSERT INTO staff_jurisdiction_entitlements VALUES (USER, 'EU', 'ANALYST');
+-- Enable multi-region oversight for global supervisory tracking accounts
+INSERT INTO staff_jurisdiction_entitlements VALUES ('GLOBAL_SUPV', 'EU', 'SUPERVISOR');
+INSERT INTO staff_jurisdiction_entitlements VALUES ('GLOBAL_SUPV', 'CA', 'SUPERVISOR');
+COMMIT;
+
+```
+
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTExNTc0MDAwMDQsLTEyNjM3NjcxNDldfQ
-==
+eyJoaXN0b3J5IjpbNjY1OTg1MzgsLTEyNjM3NjcxNDldfQ==
 -->
