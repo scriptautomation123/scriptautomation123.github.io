@@ -2111,7 +2111,7 @@ Ensure your build configuration includes standard Spring AOP and micrometer tele
 
 ```
 
-1. Test Rig Dependencies (`pom.xml`)
+### 1. Test Rig Dependencies (`pom.xml`)
 
 Add the Apache JMeter core engine libraries to your Spring Boot project test dependencies:
 
@@ -2137,7 +2137,7 @@ Use code with caution.
 
 ----------
 
-2. Programmatic Java JMeter Load Test Profile
+### 2. Programmatic Java JMeter Load Test Profile
 
 This class dynamically constructs a JMeter load-testing plan, executes a 100-user concurrent thread group over your `SecureMarketingDataService`, tracking performance metrics natively.
 
@@ -2298,7 +2298,7 @@ When running this profile against your architecture, monitor your monitoring sta
     
     Use code with caution.
     
-3.  **Property Graph Memory Allocation (`graph_memory_size`):** If your graph traversals drop out of memory and hit hard disks, throughput will decrease. Monitor your system logs to ensure your graphs remain stored entirely in memory.
+### 3.  **Property Graph Memory Allocation (`graph_memory_size`):** If your graph traversals drop out of memory and hit hard disks, throughput will decrease. Monitor your system logs to ensure your graphs remain stored entirely in memory.
 
 Grafana Dashboard Operational Monitoring Configuration
 
@@ -2477,7 +2477,7 @@ Use code with caution.
 
 ----------
 
-Dashboard Metric Analysis Metrics
+### Dashboard Metric Analysis Metrics
 
 When analyzing your system under the concurrent JMeter load profile, use these three panels to monitor service health:
 
@@ -4922,5 +4922,5 @@ class DataSeedLoadIntegrationTest {
 
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMjA2NDc3MjA3NSwtMTk5MzQ5NTk3N119
+eyJoaXN0b3J5IjpbMTYxNzIyNjc5NSwtMTk5MzQ5NTk3N119
 -->
