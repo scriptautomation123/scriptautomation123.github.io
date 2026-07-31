@@ -840,11 +840,9 @@ public class SupportAnalyticsService {
 
 ```
 
-#4. Spring AI Controller with Error Propagation
+### 4. Spring AI Controller with Error Propagation
 
-This controller layer accepts standard user prompts. If an application user tries to pass a malicious prompt-injection string, the Oracle **`BEFORE DML Trigger`** catches it, rolls back the transaction, and throws a database exception (`SQLException`). The Java layer catches this exception and returns a structured response to the client. [[1](https://www.sohamkamani.com/java/openrouter/), [2](https://medium.com/@yavuzyasincelik/introducing-a-centralized-error-handling-framework-in-spring-applications-163d119c7613)]
-
-java
+This controller layer accepts standard user prompts. If an application user tries to pass a malicious prompt-injection string, the Oracle **`BEFORE DML Trigger`** catches it, rolls back the transaction, and throws a database exception (`SQLException`). The Java layer catches this exception and returns a structured response to the client. [[1]
 
 ```
 package com.example.aidatagateway.controller;
@@ -889,21 +887,16 @@ public class SupportAIController {
         }
     }
 }
-
 ```
-
-Use code with caution.
 
 Production Runtime Advantages with Spring AI
 
 -   **No Middle Tier Leakage:** Sensitive data fields (like credit card numbers) are masked inside database memory _before_ being written to the network socket, ensuring your Java runtime environment never holds plaintext PII in memory.
--   **Streamlined Middle Tier Code:** Your Spring AI codebase remains lightweight and fast. It doesn't need to manually orchestrate complex vector math or graph database connections because Oracle 26ai handles everything via single database connection. [[1](https://medium.com/@tim_wang/spec-kit-bmad-and-agent-os-e8536f6bf8a4), [2](https://blogs.oracle.com/developers/how-i-added-memory-to-an-ai-agent-using-spring-ai-and-oracle-database)]
+-   **Streamlined Middle Tier Code:** Your Spring AI codebase remains lightweight and fast. It doesn't need to manually orchestrate complex vector math or graph database connections because Oracle 26ai handles everything via single database connection. 
 
-1. Spring AI Dependencies (`pom.xml`)
+### 1. Spring AI Dependencies (`pom.xml`)
 
 Ensure your Maven configuration contains the appropriate Spring AI orchestration starters:
-
-xml
 
 ```
 <dependencies>
@@ -914,9 +907,9 @@ xml
         <version>1.0.0-M1</version>
     </dependency>
 </dependencies>
-
 ```
 
+```
 package com.example.aidatagateway.controller;
 
 import com.example.aidatagateway.service.GraphRagOrchestratorService;
@@ -4986,5 +4979,5 @@ class DataSeedLoadIntegrationTest {
 
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTYzMDczNzc0MywtMTk5MzQ5NTk3N119
+eyJoaXN0b3J5IjpbLTQ2MDQwMjkwMywtMTk5MzQ5NTk3N119
 -->
