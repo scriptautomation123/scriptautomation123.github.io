@@ -2157,7 +2157,403 @@ Architectural Design Checklist for Production Verification
 -   **Complete Type Marshalling:** Maps the `SYS_REFCURSOR` directly to java memory objects row by row without resorting to generic untyped map projections.
 -   **Kernel-to-Socket Protection:** If a compliance breach occurs (e.g., an unapproved outreach time or missing customer consent), **the cursor allocation is canceled before any data leaves database memory**. Your Spring Boot service never handles raw, non-compliant rows.
 -   **Zero-Leak Memory Profiles:** Redacted columns (like masked customer IDs or card tokens) cross the database boundary in their masked format, keeping your Java heap safe from storing plaintext PII.
+1. Production Dependencies (`pom.xml`)
+
+Ensure your build configuration includes standard Spring AOP and micrometer telemetry packages:
+
+xml
+
+```
+<dependencies>
+    <!-- Core Spring AOP Infrastructure -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-aop</artifactId>
+    </dependency>
+    <!-- Production Ready Telemetry Metrics Registry -->
+    <dependency>
+        <groupId>io.micrometer</groupId>
+        <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
+</dependencies>
+
+```
+
+1. Test Rig Dependencies (`pom.xml`)
+
+Add the Apache JMeter core engine libraries to your Spring Boot project test dependencies:
+
+xml
+
+```
+<dependency>
+    <groupId>org.apache.jmeter</groupId>
+    <artifactId>ApacheJMeter_core</artifactId>
+    <version>5.6.3</version>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>org.apache.jmeter</groupId>
+    <artifactId>ApacheJMeter_java</artifactId>
+    <version>5.6.3</version>
+    <scope>test</scope>
+</dependency>
+
+```
+
+Use code with caution.
+
+----------
+
+2. Programmatic Java JMeter Load Test Profile
+
+This class dynamically constructs a JMeter load-testing plan, executes a 100-user concurrent thread group over your `SecureMarketingDataService`, tracking performance metrics natively.
+
+java
+
+```
+package com.example.aidatagateway.performance;
+
+import com.example.aidatagateway.service.SecureMarketingDataService;
+import org.apache.jmeter.control.LoopController;
+import org.apache.jmeter.engine.StandardJMeterEngine;
+import org.apache.jmeter.protocol.java.sampler.AbstractJavaSamplerClient;
+import org.apache.jmeter.protocol.java.sampler.JavaSampler;
+import org.apache.jmeter.protocol.java.sampler.JavaSamplerContext;
+import org.apache.jmeter.protocol.java.sampler.SampleResult;
+import org.apache.jmeter.reporters.ResultCollector;
+import org.apache.jmeter.reporters.Summariser;
+import org.apache.jmeter.testelement.TestPlan;
+import org.apache.jmeter.threads.ThreadGroup;
+import org.apache.jmeter.util.JMeterUtils;
+import org.apache.jorphan.collections.HashTree;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import java.io.File;
+
+@SpringBootTest
+class LoadTestPerformancePipeline {
+
+    @Autowired
+    private SecureMarketingDataService marketingDataService;
+
+    // Static holder to bridge spring beans into the decoupled JMeter runtime engine context
+    private static SecureMarketingDataService targetService;
+
+    @Test
+    void executeScaleLoadTest() throws Exception {
+        targetService = this.marketingDataService;
+
+        // 1. Initialize local JMeter Engine environment settings
+        StandardJMeterEngine jmeterEngine = new StandardJMeterEngine();
+        
+        String jmeterHome = System.getProperty("user.dir") + File.separator + "target" + File.separator + "jmeter";
+        File homeDir = new File(jmeterHome);
+        if (!homeDir.exists()) homeDir.mkdirs();
+        
+        JMeterUtils.setJMeterHome(jmeterHome);
+        JMeterUtils.loadJMeterProperties("");
+        JMeterUtils.initLocale();
+
+        // 2. Build the programmatic test component tree structures
+        HashTree testPlanTree = new HashTree();
+
+        // Loop controller defines how many iterations each concurrent user runs
+        LoopController loopController = new LoopController();
+        loopController.setLoops(20); // 20 hits per thread
+        loopController.setFirst(true);
+        loopController.initialize();
+
+        // Concurrent Thread Group configuration
+        ThreadGroup threadGroup = new ThreadGroup();
+        threadGroup.setName("Concurrent_SpringAI_DB_Callers");
+        threadGroup.setNumThreads(100); // 100 Parallel Application Users
+        threadGroup.setRampUp(5);       // Ramp up window of 5 seconds
+        threadGroup.setSamplerController(loopController);
+
+        // Core Java Sampler executing our specific database package call
+        JavaSampler databaseSampler = new JavaSampler();
+        databaseSampler.setClassname(ComplianceDbSamplerClient.class.getName());
+
+        // 3. Assemble the logical execution tree hierarchy
+        TestPlan testPlan = new TestPlan("Database Vector-Graph Scale Performance Profile");
+        
+        HashTree planNode = testPlanTree.add(testPlan);
+        HashTree threadGroupNode = planNode.add(threadGroup);
+        threadGroupNode.add(databaseSampler);
+
+        // Add real-time performance summary log outputs
+        Summariser summer = null;
+        String summariserName = JMeterUtils.getPropDefault("summariser.name", "summary");
+        if (!summariserName.isEmpty()) {
+            summer = new Summariser(summariserName);
+        }
+        ResultCollector logger = new ResultCollector(summer);
+        testPlanTree.add(testPlanTree.getArray()[0], logger);
+
+        // 4. Fire the Load Testing Engine
+        System.out.println("[+] STARTING SCALE PERFORMANCE LOAD TESTING RUN...");
+        jmeterEngine.configure(testPlanTree);
+        jmeterEngine.run();
+        System.out.println("[✓] LOAD PERFORMANCE PROFILE TEST COMPLETE.");
+    }
+
+    /**
+     * Programmatic Sampler Client bridging JMeter worker threads directly 
+     * into the Spring transactional data service pipeline.
+     */
+    public static class ComplianceDbSamplerClient extends AbstractJavaSamplerClient {
+        
+        @Override
+        public SampleResult runTest(JavaSamplerContext context) {
+            SampleResult result = new SampleResult();
+            result.setSampleLabel("Oracle_26ai_HNSW_PGQ_Procedure_Execution");
+            result.sampleStart(); // Metric Timing Initialization
+            
+            try {
+                // Execute the full stored procedure package containing vector generation,
+                // compliance trigger parsing, VPD filtering, and property graph matching
+                var offers = targetService.fetchCompliantOffers(
+                        501L, 
+                        "Retrieve top high-affinity cash-back options.", 
+                        "SMS", 
+                        "MARKETING", 
+                        3
+                );
+                
+                result.sampleEnd(); // Metric Timing Termination
+                if (!offers.isEmpty()) {
+                    result.setSuccessful(true);
+                    result.setResponseCodeOK();
+                    result.setResponseMessage("Total rows returned: " + offers.size());
+                } else {
+                    result.setSuccessful(true);
+                    result.setResponseCode("204");
+                    result.setResponseMessage("Execution complete. User data context isolated (Empty Set).");
+                }
+            } catch (Exception e) {
+                result.sampleEnd();
+                result.setSuccessful(false);
+                result.setResponseCode("500");
+                result.setResponseMessage("Database Gateway Compliance Exception: " + e.getMessage());
+            }
+            return result;
+        }
+    }
+}
+
+```
+
+Use code with caution.
+
+----------
+
+3. Production Saturation Bottleneck Diagnostic Checklist
+
+When running this profile against your architecture, monitor your monitoring stack metrics for three primary enterprise limits:
+
+1.  **HikariCP Connection Pool Exhaustion:** If your application latencies spike while database CPU usage remains low, your `spring.datasource.hikari.maximum-pool-size` value is likely too low for your concurrent load. Increase the connection limit to match your peak thread counts.
+2.  **Oracle Shared Pool (`SGA`) Memory Sizing:** If you observe database serialization delays (`latch: shared pool` wait events), the text embedding engine (`DBMS_VECTOR.GENERATE_TEXT_EMBEDDING`) might be competing for execution memory blocks. Increase your memory allocations via:
+    
+    sql
+    
+    ```
+    ALTER SYSTEM SET sga_target = 32G SCOPE=BOTH;
+    
+    ```
+    
+    Use code with caution.
+    
+3.  **Property Graph Memory Allocation (`graph_memory_size`):** If your graph traversals drop out of memory and hit hard disks, throughput will decrease. Monitor your system logs to ensure your graphs remain stored entirely in memory.
+
+Grafana Dashboard Operational Monitoring Configuration
+
+Save the schema below as a `dashboard.json` file and import it directly into your Grafana instance via the dashboard panel interface.
+
+json
+
+```
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "title": "Oracle 26ai Vector-Graph Execution Latencies (P95 / P99)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(db_vector_graph_execution_time_seconds_bucket[1m])) by (le, compliance_verdict))",
+          "legendFormat": "P95 Percentile [Verdict: {{compliance_verdict}}]",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(db_vector_graph_execution_time_seconds_bucket[1m])) by (le, compliance_verdict))",
+          "legendFormat": "P99 Percentile [Verdict: {{compliance_verdict}}]",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth"
+          },
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "title": "System Outbound Campaign Throughput",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(db_vector_graph_execution_time_seconds_count[1m])) by (channel)",
+          "legendFormat": "Channel: {{channel}} (Transactions/Sec)",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "tps"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "title": "AI Database Compliance Firewall Interceptions (Active Attack Blocks)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(db_compliance_firewall_blocks_total[5m])) by (reason)",
+          "legendFormat": "Violation Rule: {{reason}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "unit": "short"
+        }
+      }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["oracle26ai", "spring-ai", "compliance"],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s"]
+  },
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "includeAll": false,
+        "label": "Data Source",
+        "name": "datasource",
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      }
+    ]
+  },
+  "timezone": "browser",
+  "title": "Enterprise AI Database Compliance & Performance Operations Gate",
+  "version": 1
+}
+
+```
+
+Use code with caution.
+
+----------
+
+Dashboard Metric Analysis Metrics
+
+When analyzing your system under the concurrent JMeter load profile, use these three panels to monitor service health:
+
+-   **Panel 1 (Execution Latencies):** Monitors HNSW graphs and Property Graph lookups. Look for execution times to stay **under 15ms**. If a gap develops between `P95` and `P99`, check if data redaction rules are encountering large, unindexed columns.
+-   **Panel 2 (System Outbound Campaign Throughput):** Displays raw database transaction execution density. It shows the transaction-per-second (`TPS`) capacity of the local ONNX embedding calculation loop, allowing you to scale thread groups efficiently.
+-   **Panel 3 (Active Attack Blocks):** Tracks security exceptions. A sharp spike indicates a security incident, such as prompt injection attempts or cross-border isolation violations. This provides your security operations center with clear, actionable incident response metadata.
+
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTEyMTIxOTcwODEsMTI2OTk2NjUyOCwxMD
-IxODQxODA0LC0xMjYzNzY3MTQ5XX0=
+eyJoaXN0b3J5IjpbMTk1NzcwNjg2MSwxMjY5OTY2NTI4LDEwMj
+E4NDE4MDQsLTEyNjM3NjcxNDldfQ==
 -->
