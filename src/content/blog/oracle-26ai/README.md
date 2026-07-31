@@ -1272,7 +1272,6 @@ CROSS JOIN GRAPH_TABLE(support_knowledge_graph
 
 ```
 
-
 -   **Why it fixes it:** It prevents the LLM from synthesizing speculative answers by binding the generative context directly to immutable, deterministic database logs.
 Summary of Structural Fixes
 
@@ -1293,7 +1292,6 @@ Spring AI Production Integration Service: The Unified Gateway
 
 This implementation provides a production-ready, principal-engineer-grade Spring Boot service. It uses **HikariCP connection isolation**, **fail-safe execution blocks**, and explicit **transaction context mapping** to enforce the 20 compliance regimes across all four complex scenarios.
 
-java
 
 ```
 package com.example.aidatagateway.service;
@@ -1466,11 +1464,7 @@ public class EnterpriseComplianceGatewayService {
 
 ```
 
-Use code with caution.
-
-----------
-
-Deep Performance Analysis: HNSW Vector Indexing vs. Property Graph Traversals
+### Deep Performance Analysis: HNSW Vector Indexing vs. Property Graph Traversals
 
 Combining high-dimensional Hierarchical Navigable Small World (**HNSW**) graphs with native SQL:2023 **Property Graph Queries (PGQ)** creates a high-performance search environment. In traditional setups, this combination requires two separate systems, but running it inside a single engine scales efficiently under production loads.
 
@@ -1505,7 +1499,7 @@ Combining high-dimensional Hierarchical Navigable Small World (**HNSW**) graphs 
 -   **The Filtered Pipeline Advantage:** By using the HNSW index first, the database narrows down millions of records to just a few candidate rows. The graph engine then only needs to traverse paths for those specific rows, keeping memory consumption low. This approach ensures stable execution times even as your data lake grows into the terabyte range.
 Updated todo list
 
-## 3. Real-World Execution Cost Profiles
+### 3. Real-World Execution Cost Profiles
 
 | Execution Metric | Standalone Multi-DB Stack (AOSS + Neo4j) | Unified Oracle 26ai Native Engine | Operational Advantage |
 |---|---|---|---|
@@ -1514,7 +1508,7 @@ Updated todo list
 | **Multi-Hop Traversal (3 Hops)** | 34ms | **1.1ms** | Swaps hash-join processing for index pointer mapping. |
 | **Row-Level Security Processing** | Application-tier looping loops | **0.15ms** | Applied directly during the index scan phase via VPD filters. |
 
-### 4. Hard Storage Optimizer Directives
+###  4. Hard Storage Optimizer Directives
 
 To maintain sub-10ms execution times when scaling this Spring Boot service to millions of customers, apply this memory configuration to your production database instance:
 -- Allocate dedicated memory directly to the Vector and Graph engines
@@ -1528,22 +1522,17 @@ ALTER INDEX hybrid_ticket_idx REBUILD PARAMETERS('DYNAMIC RESTRUCTURING=TRUE');
 
 Ensure your test dependencies include the standard Spring Boot test wrappers:
 
-xml
-
 ```
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-test</artifactId>
     <scope>test</scope>
 </dependency>
-
 ```
 
-Use code with caution.
 
-----------
 
-2. The Production MockMvc Compliance Test Suite
+### 2. The Production MockMvc Compliance Test Suite
 
 This class fires realistic HTTP POST payloads at your web endpoint and validates the expected response codes and text outputs.
 
@@ -1695,7 +1684,7 @@ When you run this test suite (`mvn clean test`), your Spring Boot runtime valida
 3.  **Test Case 3 (VPD Spatial Check):** Verifies geographical data isolation rules. An EU analyst asks about an issue that matches a California record. The database kernel modifies the query behind the scenes to filter by jurisdiction, returning zero rows to the client and successfully protecting cross-border privacy boundaries.
 4.  **Test Case 4 (Model Lock Check):** Ensures third-party models are blocked. If code changes accidentally introduce an external cloud model endpoint, the compliance package rejects the transaction, preventing data from leaking outside your network perimeter.
 
-ase 1: Targeted Credit Card Cross-Sell Campaign (Reg B / CFPB 1033 / TCPA)
+##ase 1: Targeted Credit Card Cross-Sell Campaign (Reg B / CFPB 1033 / TCPA)
 
 -   **Objective:** Identify high-affinity customers for a premium credit card using semantic vector search on historical interactions, filter them by relationship history using property graphs, verify consent constraints, and replace financial metrics with live product data.
 -   **The Solution:** A unified query that matches vectors within an HNSW sub-space, filters out users without proper regulatory consent, checks outbound time boundaries, and injects real-time interest rates into the promotional text. [[1](https://medium.com/technology-hits/vector-databases-for-rag-2641ddb18911)]
@@ -4952,5 +4941,5 @@ class DataSeedLoadIntegrationTest {
 
 Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTgwMzYwMjg3OCwtMTk5MzQ5NTk3N119
+eyJoaXN0b3J5IjpbMTM4NjE3NzQ2OCwtMTk5MzQ5NTk3N119
 -->
