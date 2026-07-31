@@ -259,6 +259,35 @@ Architectural Breakdown
 -   **`DBMS_VECTOR.GENERATE_TEXT_EMBEDDING`**: Computes text strings into vector coordinates natively inside memory, preventing payload exposure to application middleware boundaries. [[1](https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/pl-sql-packages-generate-embeddings.html), [2](https://blogs.oracle.com/cloud-infrastructure/oci-database-ai-vector-search-guide)]
 -   **`DBMS_HYBRID_VECTOR.SEARCH` with `"RRF"`**: Intersects exact structural matches (like specific logs or text IDs) with loose conceptual matches, resolving keyword vs. vector trade-offs cleanly via standardized mathematical rank merging. [[1](https://blogs.oracle.com/coretec/hybrid-vector-index-the-combination-of-full-text-and-semantic-vector-search), [2](https://github.com/oracle/skills/blob/main/db/features/dbms-vector.md)]
 -   **`GRAPH_TABLE` Path Matching**: Resolves highly nested data dependencies (e.g., finding the manager of the engineer handling the affected infrastructure component) without forcing resource-heavy multi-table relational `JOIN` conditions.
+
+1. Unified Compliance Verification Query
+
+Run this unified administrative diagnostic query to ensure that the core security configurations, underlying audit tables, blockchain metadata, and data redaction policies are active.
+
+sql
+
+```
+SELECT 'Unified Audit Trail' AS audit_component, 
+       enabled_option AS policy_name, 
+       success, 
+       failure 
+FROM audit_unified_enabled_policies
+WHERE enabled_option = 'ORA_SECURECONFIG'
+UNION ALL
+SELECT 'Blockchain Ledger Logging', 
+       table_name, 
+       row_retention_days || ' days retention', 
+       blockchain_table_type
+FROM user_blockchain_tables
+WHERE table_name = 'BLOCKCHAIN_CAMPAIGN_ATTRIBUTION'
+UNION ALL
+SELECT 'Data Redaction Policy', 
+       policy_name, 
+       expression, 
+       enable
+FROM user_redaction_policies
+WHERE object_name = 'HELPDESK_TICKETS' OR policy_name LIKE '%PAN%';
+```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTEyNjM3NjcxNDldfQ==
+eyJoaXN0b3J5IjpbMjA5ODgwODE4NSwtMTI2Mzc2NzE0OV19
 -->
