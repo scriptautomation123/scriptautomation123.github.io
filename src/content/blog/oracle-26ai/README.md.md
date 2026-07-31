@@ -392,7 +392,35 @@ COMMIT;
 
 ```
 
-Use code with caution.
+Test Case B: Testing State ADMT Profiling Constraints
+
+sql
+
+```
+-- Attempting a normal operational insert under an opted-out security context profile
+INSERT INTO helpdesk_tickets (ticket_id, summary, ticket_vector, comp_id)
+VALUES (99902, 'Database replication lag spike causing transaction locks.', NULL, 101);
+
+-- OUTPUT EXPECTED:
+-- ORA-20103: REGULATORY EXCEPTION: Compliance Violation [ADMT Laws]. User profile actively flags profiling opt-out.
+```
+
+Production Operational Checklist
+
+-   **Zero Egress Latency:** Because the evaluation occurs at the `BEFORE` engine phase using fast regular expressions and standard index scans, verification adds less than 1 millisecond of execution overhead.
+-   **Immunity to Application-Bypass:** If an engineer bypasses your node or Python application tier and runs a direct query through a database command line tool (like SQLcl), this firewall trigger still halts the data transaction.
+
+Would you like to augment this security gate with **Oracle Virtual Private Database (VPD)** rules to automatically hide rows at runtime based on the caller's geographical jurisdiction (**GDPR** vs. **CCPA**)?
+
+To implement runtime data containment across jurisdictions like **GDPR** (EU) and **CCPA** (California), we use **Oracle Virtual Private Database (VPD)**, also known as Fine-Grained Access Control (FGAC).
+
+In Oracle AI Database 26ai, VPD automatically appends a dynamic `WHERE` clause to every incoming SQL statement—whether it is a standard query, a vector search, or a property graph traversal. This ensures that a user or application context from the EU can never view, vector-match, or traverse relationships belonging to California citizens, and vice versa.
+
+----------
+
+1. The Security Context and Policy Package
+
+First, we create a secure database context and a PL/SQL policy function. The function evaluates the current session's jurisdiction and returns a string that limits the visible data rows.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTY4MjI3NTMzMywtMTI2Mzc2NzE0OV19
+eyJoaXN0b3J5IjpbMTM3NjQzNTE4NCwtMTI2Mzc2NzE0OV19
 -->
