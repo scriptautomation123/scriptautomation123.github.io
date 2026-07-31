@@ -1732,7 +1732,52 @@ When you run this test suite (`mvn clean test`), your Spring Boot runtime valida
 2.  **Test Case 2 (Data Redaction):** Validates that sensitive credit card information is masked in flight. The vector engine uses the unredacted text to find the most relevant ticket, but the data redaction policy masks the number before the row is returned to the Java tier, protecting patient or client information.
 3.  **Test Case 3 (VPD Spatial Check):** Verifies geographical data isolation rules. An EU analyst asks about an issue that matches a California record. The database kernel modifies the query behind the scenes to filter by jurisdiction, returning zero rows to the client and successfully protecting cross-border privacy boundaries.
 4.  **Test Case 4 (Model Lock Check):** Ensures third-party models are blocked. If code changes accidentally introduce an external cloud model endpoint, the compliance package rejects the transaction, preventing data from leaking outside your network perimeter.
+
+ase 1: Targeted Credit Card Cross-Sell Campaign (Reg B / CFPB 1033 / TCPA)
+
+-   **Objective:** Identify high-affinity customers for a premium credit card using semantic vector search on historical interactions, filter them by relationship history using property graphs, verify consent constraints, and replace financial metrics with live product data.
+-   **The Solution:** A unified query that matches vectors within an HNSW sub-space, filters out users without proper regulatory consent, checks outbound time boundaries, and injects real-time interest rates into the promotional text. [[1](https://medium.com/technology-hits/vector-databases-for-rag-2641ddb18911)]
+
+sql
+
+```
+SELECT /*+ LEADING(hc) USE_NL(gt) */
+    hc.customer_id,
+    hc.affinity_score,
+    -- Reg Z Compliance: Replace tokens with real-time interest rates from live ledger tables
+    REGEXP_REPLACE(
+        'Get pre-approved for our Card! Special offer: {APR_DISCLOSURE}. Reply STOP to opt-out.',
+        '\{APR_DISCLOSURE\}', TO_CHAR(gt.live_apr, '99.99') || '% APR'
+    ) AS compliant_marketing_copy,
+    gt.account_manager
+FROM (
+    -- Step 1: HNSW Vector Search locates customers with high semantic affinity for premium reward topics
+    SELECT customer_id,
+           (1 - VECTOR_DISTANCE(interaction_vector, :campaign_embedding, COSINE)) * 100 AS affinity_score
+    FROM customer_interactions
+    WHERE VECTOR_DISTANCE(interaction_vector, :campaign_embedding, COSINE) < 0.28
+    FETCH FIRST 100 ROWS ONLY
+) hc
+CROSS JOIN GRAPH_TABLE(marketing_compliance_graph
+    -- Step 2: Property Graph tracks user context, consent, and channel configuration
+    MATCH (c IS Customer) -[:HOLDS]-> (a IS Account) -[:MANAGED_BY]-> (m IS Employee),
+          (c) -[:HAS_CONSENT]-> (sec IS FinancialConsent)
+    WHERE c.customer_id = hc.customer_id
+      -- CFPB 1033 & Reg E Compliance: Filter out users without explicit opt-in markers
+      AND sec.opt_in_1033_marketing = 'Y'
+      AND sec.marketing_opt_out = 'N'
+      -- TCPA Compliance: Ensure outreach is processed inside permitted daily windows (8 AM - 9 PM)
+      AND EXTRACT(HOUR FROM SYSTIMESTAMP) BETWEEN 8 AND 20
+    COLUMNS (
+        a.current_rate_tier_apr AS live_apr,
+        m.name AS account_manager
+    )
+) gt;
+
+```
+
+Use code with caution.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTEwODA1MDg3MjMsMTI2OTk2NjUyOCwxMD
-IxODQxODA0LC0xMjYzNzY3MTQ5XX0=
+eyJoaXN0b3J5IjpbLTU2MzE3NzkzLDEyNjk5NjY1MjgsMTAyMT
+g0MTgwNCwtMTI2Mzc2NzE0OV19
 -->
