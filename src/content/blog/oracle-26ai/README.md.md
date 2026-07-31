@@ -145,7 +145,21 @@ FROM TABLE(
     )
 );
 ```
+### Hybrid Vector Index
+To allow `DBMS_HYBRID_VECTOR` to fuse vector and text scores via RRF, we update the table by creating a unified hybrid index over both the text column and the vector column. [[1](https://blogs.oracle.com/coretec/hybrid-vector-index-the-combination-of-full-text-and-semantic-vector-search)]
+
+sql
+
+```
+-- Drop the standalone vector index from step 1
+DROP INDEX h_ticket_v_idx;
+
+-- Create a production-grade Hybrid Index for combined text & vector search
+CREATE INDEX hybrid_ticket_idx ON helpdesk_tickets(summary) 
+INDEXTYPE IS CTXSYS.CONTEXT
+PARAMETERS ('VECTOR COLUMN ticket_vector');
+```
 
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTU0OTAzODhdfQ==
+eyJoaXN0b3J5IjpbLTM0NzMyMzM5OV19
 -->
