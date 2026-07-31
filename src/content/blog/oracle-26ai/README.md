@@ -1,6 +1,6 @@
 
 
-# Enterprise Technical Review and Production Blueprint: Oracle Database 26ai Converged Architecture for Proactive Banking Nudges
+# Oracle26AI banking 
 
 ## Executive Architectural Review and Notebook Validation
 
@@ -1815,7 +1815,7 @@ $$\text{Vector Size} = 384 \times 4 = 1,536 \text{ bytes}$$
 
 Would you like me to provide a sample Node.js client script to invoke the FastAPI REST proxy and query the database via REST endpoints?
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMjA5MDMzNzIyNCw1MDU2OTA0NjUsMTYxMj
-cwNzk1MywtMTAzOTg4OTcwMCwtNDUyOTE1ODU3LC0xNjU1NTY5
-Njc5XX0=
+eyJoaXN0b3J5IjpbLTIwNTc3ODg2NTgsMjA5MDMzNzIyNCw1MD
+U2OTA0NjUsMTYxMjcwNzk1MywtMTAzOTg4OTcwMCwtNDUyOTE1
+ODU3LC0xNjU1NTY5Njc5XX0=
 -->
