@@ -1314,36 +1314,21 @@ Use code with caution.
 -   **Why it fixes it:** It prevents the LLM from synthesizing speculative answers by binding the generative context directly to immutable, deterministic database logs.
 Summary of Structural Fixes
 
-Traditional Operational Failure
+Updated todo list
 
-Root Database Cause
+## Summary of Structural Fixes
 
-Oracle 26ai Vector-Graph Solution
+| Traditional Operational Failure | Root Database Cause | Oracle 26ai Vector-Graph Solution |
+|---|---|---|
+| Data Leaks during Active Investigations | Separate app-tier lookups create race conditions. | **Native Guard:** VPD and graph scans filter data inside memory before processing. |
+| Outdated Financial Disclosures | Static text vectors become stale when rates change. | **Live Token Swapping:** Property graph joins inject live database ledger rates into the text context. |
+| Unconscious Demographic Biases | Unstructured text implicitly contains protected attributes. | **Entity Filtering:** Graph path exclusions remove tickets with demographic dependencies from search pools. |
+| Speculative or Non-Auditable Approvals | RAG pipelines surface unstructured chat notes instead of formal system logs. | **Determined Context Chains:** Vector targets are forced to join to cryptographic system logs via graph properties. |
 
-**Data Leaks during Active Investigations**
+Would you like to write a **Spring AI integration service** to implement one of these specific scenarios, or analyze the performance impact of combining **HNSW vector indexes** with **Property Graph lookups**?
 
-Separate app-tier lookups create race conditions.
 
-**Native Guard:** VPD and graph scans filter data inside memory before processing.
-
-**Outdated Financial Disclosures**
-
-Static text vectors become stale when rates change.
-
-**Live Token Swapping:** Property graph joins inject live database ledger rates into the text context.
-
-**Unconscious Demographic Biases**
-
-Unstructured text implicitly contains protected attributes.
-
-**Entity Filtering:** Graph path exclusions remove tickets with demographic dependencies from search pools.
-
-**Speculative or Non-Auditable Approvals**
-
-RAG pipelines surface unstructured chat notes instead of formal system logs.
-
-**Determined Context Chains:** Vector targets are forced to join to cryptographic system logs via graph properties.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTExNDMwNTc5NTAsMTAyMTg0MTgwNCwtMT
-I2Mzc2NzE0OV19
+eyJoaXN0b3J5IjpbNzcyMDU5MTU3LDEwMjE4NDE4MDQsLTEyNj
+M3NjcxNDldfQ==
 -->
