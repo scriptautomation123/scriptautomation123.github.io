@@ -15,3 +15,20 @@ This README is a navigation hub. The original content has been split into topic 
 - [Complete Configuration Example](sections/10_complete_configuration_example.md)
 - [Skill Generation Examples](sections/11_skill_generation_examples.md)
 - [Skill Generation Format-Specific Options](sections/12_skill_generation_format_specific_options.md)
+
+
+```
+npx repomix@latest --include "**/src/main/java/**/*.java,**/src/main/resources/application.{properties,yml,yaml},**/pom.xml,**/*.md" --ignore "**/target/**"
+```
+
+```
+npx repomix@latest --include "**/src/main/java/**/*.java,**/src/test/java/**/*.java,**/src/main/resources/application.{properties,yml,yaml},**/pom.xml,**/*.md" --ignore "**/target/**"
+```
+
+```
+npx repomix@latest --include "**.yaml,**.env,**.md" --ignore ".instructions.md,.repomixignore,kafka-reading.ai.md,kafka-reading.txt,lib.sh,microshift.sh,podman_minc_README.md,README.md,epomix.config.json"
+```
+
+```
+npx repomix@latest --include "**.yaml,**.env,**.md" --ignore ".instructions.md,.repomixignore,kafka-reading.ai.md,kafka-reading.txt,lib.sh,microshift.sh,podman_minc_README.md,README.md,epomix.config.json"
+```
