@@ -3204,7 +3204,7 @@ Principal Architect Design Review Summary
 2.  **Unified Core Engine Execution:** Eliminates network delays by calculating vector coordinates and parsing SQL property graphs in a single database session.
 3.  **Verified Audit Records (SOX / Dodd-Frank):** Every call is permanently logged to an append-only database blockchain ledger table for smooth auditing.
 
-To completely modernize a tier-1 banking application like Bank of America’s **Erica chatbot** using the architecture you built, you need a split design pattern: **Spring AI manages the conversation flow and LLM integration, while Oracle 26ai runs the compliance checks, vector generation, and relationship graph traversals.**
+To completely modernize a tier-1 banking application like a company’s **chatbot** using the architecture you built, you need a split design pattern: **Spring AI manages the conversation flow and LLM integration, while Oracle 26ai runs the compliance checks, vector generation, and relationship graph traversals.**
 
 This approach ensures the system scales efficiently under heavy loads. It prevents the application tier from wasting CPU cycles on high-dimensional vector math and keeps sensitive data safe from memory leaks within the Java application server.
 
@@ -3237,7 +3237,7 @@ xml
 
 ```
 
-To scale an omni-channel conversational marketing platform like Bank of America’s **Erica chatbot** to millions of active users, you must use a **split architectural pattern**.
+To scale an omni-channel conversational marketing platform like a company’s **chatbot** to millions of active users, you must use a **split architectural pattern**.
 
 Relying on an application-tier orchestrator to generate embeddings, track user consent, and crawl graph connections results in high network latency and complex data-handling bugs. Instead, **Spring AI should handle conversational orchestration, while Oracle 26ai runs the vector-graph marketing logic natively inside database memory.**
 
@@ -3255,43 +3255,43 @@ sql
 
 ```
 -- Core Relational Marketing and Transaction Tables
-CREATE TABLE bofa_corporate_entities (
+CREATE TABLE company_corporate_entities (
     entity_id           NUMBER PRIMARY KEY,
     legal_name          VARCHAR2(255) NOT NULL,
     entity_type         VARCHAR2(50) NOT NULL, -- 'CORPORATION', 'SHELL_CORP', 'VENDOR'
     data_jurisdiction   VARCHAR2(10) NOT NULL  -- 'US', 'EU', 'APAC'
 );
 
-CREATE TABLE bofa_interaction_logs (
+CREATE TABLE company_interaction_logs (
     log_id              NUMBER PRIMARY KEY,
-    entity_id           NUMBER REFERENCES bofa_corporate_entities(entity_id),
+    entity_id           NUMBER REFERENCES company_corporate_entities(entity_id),
     transcript_text     VARCHAR2(4000) NOT NULL,
     log_vector          VECTOR(384, FLOAT32) NOT NULL, -- High-dimensional vector column
     recorded_at         TIMESTAMP DEFAULT SYSTIMESTAMP
 );
 
-CREATE TABLE bofa_credit_facilities (
+CREATE TABLE company_credit_facilities (
     facility_id         NUMBER PRIMARY KEY,
-    entity_id           NUMBER REFERENCES bofa_corporate_entities(entity_id),
+    entity_id           NUMBER REFERENCES company_corporate_entities(entity_id),
     current_apr         NUMBER(5,2) NOT NULL,
     outstanding_balance NUMBER(15,2) NOT NULL,
     risk_tier           VARCHAR2(30) NOT NULL  -- 'PRIME', 'DISTRESSED', 'CRITICAL_DEFAULT'
 );
 
 -- Production-grade memory-optimized HNSW vector index
-CREATE VECTOR INDEX idx_hnsw_bofa_logs ON bofa_interaction_logs(log_vector)
+CREATE VECTOR INDEX idx_hnsw_company_logs ON company_interaction_logs(log_vector)
 ORGANIZATION INMEMORY NEIGHBOR GRAPH
 DISTANCE COSINE;
 
 -- Declarative SQL:2023 Property Graph over core business tables
-CREATE PROPERTY GRAPH bofa_marketing_compliance_graph
+CREATE PROPERTY GRAPH company_marketing_compliance_graph
     VERTEX TABLES (
-        bofa_corporate_entities KEY (entity_id) LABEL Entity PROPERTIES (legal_name, entity_type)
+        company_corporate_entities KEY (entity_id) LABEL Entity PROPERTIES (legal_name, entity_type)
     )
     EDGE TABLES (
-        bofa_credit_facilities KEY (facility_id)
-            SOURCE KEY (entity_id) REFERENCES bofa_corporate_entities(entity_id)
-            DESTINATION KEY (entity_id) REFERENCES bofa_corporate_entities(entity_id) LABEL OBLIGATED_UNDER
+        company_credit_facilities KEY (facility_id)
+            SOURCE KEY (entity_id) REFERENCES company_corporate_entities(entity_id)
+            DESTINATION KEY (entity_id) REFERENCES company_corporate_entities(entity_id) LABEL OBLIGATED_UNDER
     );
 
 ```
@@ -3333,7 +3333,7 @@ public class ToolModels {
     // Output DTO returned to the LLM reasoning loop
     public record ToolExecutionSummary(
         String executionVerdict,
-        List<BofAMarketingNudgeResponse> records,
+        List<CompanyMarketingNudgeResponse> records,
         String systemAuditMessage
     ) {}
 }
@@ -3353,7 +3353,7 @@ java
 ```
 package com.example.aidatagateway.config;
 
-import com.example.aidatagateway.dto.BofAMarketingNudgeResponse;
+import com.example.aidatagateway.dto.CompanyMarketingNudgeResponse;
 import com.example.aidatagateway.dto.ToolModels.NudgeRequest;
 import com.example.aidatagateway.dto.ToolModels.ToolExecutionSummary;
 import com.example.aidatagateway.service.SecureNudgeDataService;
@@ -3367,9 +3367,9 @@ import java.util.List;
 import java.util.function.Function;
 
 @Configuration
-public class EricaBotToolConfiguration {
+public class ChatbotToolConfiguration {
 
-    private static final Logger log = LoggerFactory.getLogger(EricaBotToolConfiguration.class);
+    private static final Logger log = LoggerFactory.getLogger(ChatbotToolConfiguration.class);
 
     /**
      * Declares the Oracle 26ai Vector-Graph Compliance Gateway as a discoverable LLM Tool.
@@ -3384,7 +3384,7 @@ public class EricaBotToolConfiguration {
             
             try {
                 // Call your pre-built Oracle 26ai stored procedure pipeline via JDBC
-                List<BofAMarketingNudgeResponse> dataContext = dbService.fetchCompliantNudges(
+                List<CompanyMarketingNudgeResponse> dataContext = dbService.fetchCompliantNudges(
                         request.region(),
                         request.intent(),
                         request.conversationText(),
@@ -3431,7 +3431,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class EricaBotOrchestrationService {
+public class ChatbotOrchestrationService {
 
     @Autowired
     private ChatModel chatModel;
@@ -3440,7 +3440,7 @@ public class EricaBotOrchestrationService {
         
         // 1. Enforce strict base operational boundaries via the System Prompt
         String coreSystemDirective = String.format("""
-            You are Erica, the conversational virtual coordinator for Bank of America.
+            You are the conversational virtual coordinator for the company.
             You are acting within the active sovereign region of: %s.
             
             OPERATIONAL MANDATE:
@@ -3483,7 +3483,7 @@ java
 ```
 package com.example.aidatagateway.controller;
 
-import com.example.aidatagateway.service.EricaBotOrchestrationService;
+import com.example.aidatagateway.service.ChatbotOrchestrationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -3491,8 +3491,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/erica-chat")
-public class EricaChatController {
+@RequestMapping("/api/v1/chatbot")
+public class ChatbotController {
 
     @Autowired
 ```
@@ -3527,7 +3527,7 @@ json
 
 ```
 {
-  "erica_response": "I've checked our commercial lending ledger options for your enterprise profile. Based on your supply requirements, you are eligible to consult with an advisor regarding special equipment credit lines. Reference Code: SUPPLY_DISTRESS_CHECK."
+    "chatbot_response": "I've checked our commercial lending ledger options for your enterprise profile. Based on your supply requirements, you are eligible to consult with an advisor regarding special equipment credit lines. Reference Code: SUPPLY_DISTRESS_CHECK."
 }
 
 ```
@@ -3558,7 +3558,7 @@ json
 
 ```
 {
-  "erica_response": "I cannot process that request. Your query has been flagged by system security controls."
+    "chatbot_response": "I cannot process that request. Your query has been flagged by system security controls."
 }
 
 ```
@@ -3589,10 +3589,10 @@ xml
         <relativePath/> 
     </parent>
 
-    <groupId>com.bofa.erica</groupId>
+    <groupId>com.company.chatbot</groupId>
     <artifactId>vector-graph-compliance-gateway</artifactId>
     <version>1.0.0-RELEASE</version>
-    <name>EricaVectorGraphComplianceGateway</name>
+    <name>ChatbotVectorGraphComplianceGateway</name>
 
     <properties>
         <java.version>25</java.version> <!-- Built over modern LTS Java Platform Core -->
@@ -3657,13 +3657,13 @@ sql
 
 ```
 -- Step 1: Create a secure OS directory pointer (Run as SYSDBA)
-CREATE OR REPLACE DIRECTORY bofa_model_dir AS '/opt/oracle/secure_models';
+CREATE OR REPLACE DIRECTORY company_model_dir AS '/opt/oracle/secure_models';
 -- Note: Place your converted 'all-MiniLM-L6-v2.onnx' file into this exact OS path.
 
 -- Step 2: Load the model binary into the database mining catalog
 BEGIN
     DBMS_VECTOR.LOAD_ONNX_MODEL(
-        directory_name => 'BOFA_MODEL_DIR',
+        directory_name => 'COMPANY_MODEL_DIR',
         file_name      => 'all-MiniLM-L6-v2.onnx',
         model_name     => 'MINI_LLM_EMBEDDER'
     );
@@ -3684,17 +3684,17 @@ This procedure accepts user text, processes it through your loaded **`MINI_LLM_E
 sql
 
 ```
-CREATE OR REPLACE PACKAGE bofa_vector_generation_service AS
+CREATE OR REPLACE PACKAGE company_vector_generation_service AS
     PROCEDURE compute_compliant_embedding(
         p_caller_user        IN  VARCHAR2,
         p_text_input         IN  VARCHAR2,
         p_output_vector      OUT VECTOR,
         p_compliance_verdict OUT VARCHAR2
     );
-END bofa_vector_generation_service;
+END company_vector_generation_service;
 /
 
-CREATE OR REPLACE PACKAGE BODY bofa_vector_generation_service AS
+CREATE OR REPLACE PACKAGE BODY company_vector_generation_service AS
 
     PROCEDURE compute_compliant_embedding(
         p_caller_user        IN  VARCHAR2,
@@ -3759,7 +3759,7 @@ CREATE OR REPLACE PACKAGE BODY bofa_vector_generation_service AS
             RAISE_APPLICATION_ERROR(-20125, 'FIREWALL EXCEPTION: Vector generation blocked. Verdict: ' || p_compliance_verdict);
     END compute_compliant_embedding;
 
-END bofa_vector_generation_service;
+END company_vector_generation_service;
 /
 
 ```
@@ -3771,9 +3771,9 @@ This programmatic test rig spins up 150 parallel virtual threads, hits your `Sec
 java
 
 ```
-package com.bofa.erica.performance;
+package com.company.chatbot.performance;
 
-import com.bofa.erica.service.SecureNativeEmbeddingService;
+import com.company.chatbot.service.SecureNativeEmbeddingService;
 import org.apache.jmeter.control.LoopController;
 import org.apache.jmeter.engine.StandardJMeterEngine;
 import org.apache.jmeter.protocol.java.sampler.AbstractJavaSamplerClient;
@@ -3826,7 +3826,7 @@ class InDatabaseVectorLoadBenchTest {
 
         // 3. Define the virtual thread load size mapping parameters
         ThreadGroup group = new ThreadGroup();
-        group.setName("Parallel_Erica_Vector_Workers");
+        group.setName("Parallel_Chatbot_Vector_Workers");
         group.setNumThreads(150); // 150 parallel customer inquiries
         group.setRampUp(3);       // Ramp up inside 3 seconds
         group.setSamplerController(loops);
@@ -3872,7 +3872,7 @@ class InDatabaseVectorLoadBenchTest {
             try {
                 // Submit raw text strings to be computed natively inside database memory via ONNX
                 float[] vectors = staticTargetService.generateInDatabaseEmbedding(
-                        "ERICA_LOAD_BENCH_WORKER", 
+                        "CHATBOT_LOAD_BENCH_WORKER", 
                         "Customer intent portfolio restructuring checking balances transfer cash options."
                 );
                 
@@ -4061,7 +4061,7 @@ This background service schedules a recurring pool task to sweep the target Open
 java
 
 ```
-package com.bofa.erica.service;
+package com.company.chatbot.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
@@ -4304,7 +4304,7 @@ This component implements Micrometer's `MeterBinder` interface. It queries your 
 java
 
 ```
-package com.bofa.erica.telemetry;
+package com.company.chatbot.telemetry;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -4627,7 +4627,7 @@ sql
 -- 1. RELATIONAL DATA AND VEHICLE MARKETING OFFER VECTOR TABLES
 -- ============================================================================
 
-CREATE TABLE bofa_customers (
+CREATE TABLE company_customers (
     customer_id         NUMBER PRIMARY KEY,
     legal_name          VARCHAR2(255) NOT NULL,
     account_status      VARCHAR2(30) DEFAULT 'ACTIVE' NOT NULL,
@@ -4653,7 +4653,7 @@ CREATE TABLE dynamic_marketing_offers (
 -- Relationship Map for Property Graph
 CREATE TABLE customer_product_eligibility (
     eligibility_id      NUMBER PRIMARY KEY,
-    customer_id         NUMBER REFERENCES bofa_customers(customer_id) NOT NULL,
+    customer_id         NUMBER REFERENCES company_customers(customer_id) NOT NULL,
     product_code        VARCHAR2(30) REFERENCES financial_product_ledgers(product_code) NOT NULL,
     pre_screening_score NUMBER(5,2) NOT NULL
 );
@@ -4683,12 +4683,12 @@ DISTANCE COSINE;
 
 CREATE PROPERTY GRAPH dynamic_marketing_graph
     VERTEX TABLES (
-        bofa_customers KEY (customer_id) LABEL Customer PROPERTIES (legal_name, account_status),
+        company_customers KEY (customer_id) LABEL Customer PROPERTIES (legal_name, account_status),
         financial_product_ledgers KEY (product_code) LABEL Product PROPERTIES (live_apr, live_apy)
     )
     EDGE TABLES (
         customer_product_eligibility KEY (eligibility_id)
-            SOURCE KEY (customer_id) REFERENCES bofa_customers(customer_id)
+            SOURCE KEY (customer_id) REFERENCES company_customers(customer_id)
             DESTINATION
 ```
 
@@ -4736,9 +4736,9 @@ Save this code within your Java testing tree (`src/test/java`). It handles progr
 java
 
 ```
-package com.bofa.erica.performance;
+package com.company.chatbot.performance;
 
-import com.bofa.erica.service.EricaConversationalOrchestrator;
+import com.company.chatbot.service.ChatbotConversationalOrchestrator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
@@ -4775,7 +4775,7 @@ class DataSeedLoadIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
-    private EricaConversationalOrchestrator conversationalOrchestrator;
+    private ChatbotConversationalOrchestrator conversationalOrchestrator;
 
     /**
      * Executes the dynamic data-seeding script inside the Oracle 26ai kernel.
@@ -4796,7 +4796,7 @@ class DataSeedLoadIntegrationTest {
                     DELETE FROM customer_product_eligibility;
                     DELETE FROM dynamic_marketing_offers;
                     DELETE FROM financial_product_ledgers;
-                    DELETE FROM bofa_customers;
+                    DELETE FROM company_customers;
                     DELETE FROM outbound_nudge_evaluations;
                     COMMIT;
 
@@ -4808,7 +4808,7 @@ class DataSeedLoadIntegrationTest {
                     -- Seeding 1,000 Corporate Client Profiles
                     FOR i IN 1..1000 LOOP
                         v_cust_id := 500000 + i;
-                        INSERT INTO bofa_customers (customer_id, legal_name, account_status, data_jurisdiction)
+                        INSERT INTO company_customers (customer_id, legal_name, account_status, data_jurisdiction)
                         VALUES (v_cust_id, 'Global Corp Entity LLC #' || i, 'ACTIVE', 
                                 CASE MOD(i, 3) WHEN 0 THEN 'US' WHEN 1 THEN 'EU' ELSE 'APAC' END);
 
@@ -4870,7 +4870,7 @@ class DataSeedLoadIntegrationTest {
             // Schedule the task inside the Virtual Thread Executor frame
             virtualThreadPool.submit(() -> {
                 try {
-                    String outputResponse = conversationalOrchestrator.processEricaNudgeRequest(mockPrompt, targetCustomerId);
+                    String outputResponse = conversationalOrchestrator.processChatbotNudgeRequest(mockPrompt, targetCustomerId);
                     resultsTracker.put(targetCustomerId, outputResponse);
                 } catch (Exception e) {
                     log.error("Virtual Thread transactional allocation fault for client ID {}: {}", targetCustomerId, e.getMessage());
