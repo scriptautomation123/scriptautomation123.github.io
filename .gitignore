@@ -25,3 +25,4 @@ pnpm-debug.log*
 
 .trunk/
 
+microshift-flink-kafka/repomix.config.json
